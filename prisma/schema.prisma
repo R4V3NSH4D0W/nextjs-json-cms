@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// —— CMS (aligned with luxstore-backend models for easier content migration) ——
+
+model CmsLayout {
+  id                String    @id @default(cuid())
+  name              String
+  rootKey           String
+  schema            Json
+  referenceImageUrl String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  pages             CmsPage[]
+
+  @@map("cms_layouts")
+}
+
+model CmsPage {
+  id              String     @id @default(cuid())
+  title           String
+  slug            String     @unique
+  /// Page is enabled in the CMS (not archived). Public API still requires `published`.
+  isActive        Boolean    @default(true)
+  /// Live on public `/api/v1/cms/pages/...` and storefront. Draft pages stay editable with `published: false`.
+  published       Boolean    @default(false)
+  layoutId        String?
+  layout          CmsLayout? @relation(fields: [layoutId], references: [id], onDelete: SetNull)
+  blocks          CmsBlock[]
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  ogTitle         String?
+  ogDescription   String?
+  canonicalUrl    String?
+  noIndex         Boolean    @default(false)
+  /// Admin-only draft (title, slug, sections, SEO). Public API uses published blocks until Publish.
+  draftData       Json?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@map("cms_pages")
+}
+
+model CmsBlock {
+  id           String   @id @default(cuid())
+  pageId       String
+  page         CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type         String
+  displayOrder Int      @default(0)
+  config       Json     @default("{}")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([pageId])
+  @@map("cms_blocks")
+}
+
+enum CmsSiteContentKey {
+  navigation
+  footer
+  announcements
+}
+
+model CmsSiteContent {
+  id        String            @id @default(cuid())
+  key       CmsSiteContentKey @unique
+  payload   Json
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@map("cms_site_content")
+}

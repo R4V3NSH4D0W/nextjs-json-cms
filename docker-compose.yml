@@ -1,0 +1,56 @@
+# Local development: Postgres only (default).
+#   pnpm docker:db
+#   pnpm db:setup   # migrate + seed (after copying .env from .env.example)
+#   pnpm dev        # app on host → DATABASE_URL must end with same DB as POSTGRES_DB (e.g. /cms)
+#
+# Optional — run the Next image + Postgres together (smoke-test production build):
+#   docker compose --profile full up --build
+#
+# Production: deploy the Dockerfile to your host; point DATABASE_URL at managed
+# Postgres (Neon, RDS, etc.). Do not rely on this file in production.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cms_db
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nepal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nepal}
+      POSTGRES_DB: ${POSTGRES_DB:-cms}
+    volumes:
+      - cms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cms_web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-nepal}:${POSTGRES_PASSWORD:-nepal}@postgres:5432/${POSTGRES_DB:-cms}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - cms_uploads:/app/assets/uploads
+
+volumes:
+  cms_pgdata:
+  cms_uploads:
