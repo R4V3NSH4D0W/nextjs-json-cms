@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { validatePublicBlocksInDev } from "@/lib/cms/public-dev-validate";
 import { cmsService } from "@/lib/server/cms-service";
 
 export async function GET(
@@ -21,5 +22,6 @@ export async function GET(
       { status: 404 },
     );
   }
+  validatePublicBlocksInDev(page.blocks);
   return NextResponse.json({ success: true, page });
 }

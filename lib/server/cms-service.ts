@@ -3,19 +3,16 @@ import { CmsSiteContentKey } from "@/lib/generated/prisma/enums";
 import { getPrisma } from "@/lib/server/prisma";
 import { shapePublicBlock } from "@/lib/server/cms-public-block";
 import { shapePublicCmsPageSeo } from "@/lib/server/cms-public-page-seo";
+import {
+  CMS_BLOCK_TYPES,
+  type CmsBlockType,
+} from "@/lib/cms/block-types";
+import type {
+  PublicCmsPage,
+  PublicCmsPageListItem,
+} from "@/lib/cms/public-page-types";
 
-export const CMS_BLOCK_TYPES = [
-  'hero',
-  'categories',
-  'brands',
-  'featured_products',
-  'recommended',
-  'editorial',
-  'banner',
-  'text_block',
-] as const;
-
-export type CmsBlockType = (typeof CMS_BLOCK_TYPES)[number];
+export { CMS_BLOCK_TYPES, type CmsBlockType };
 
 const blockTypeSet = new Set<string>(CMS_BLOCK_TYPES);
 
@@ -456,7 +453,7 @@ export const cmsService = {
   },
 
   /** Storefront: active pages only; SEO nested under `seo` (no top-level SEO keys). */
-  async listPublicPages() {
+  async listPublicPages(): Promise<PublicCmsPageListItem[]> {
     const rows = await getPrisma().cmsPage.findMany({
       where: { isActive: true, published: true },
       select: {
@@ -478,7 +475,7 @@ export const cmsService = {
       id: row.id,
       slug: row.slug,
       title: row.title,
-      updatedAt: row.updatedAt,
+      updatedAt: row.updatedAt.toISOString(),
       seo: shapePublicCmsPageSeo(row),
     }));
   },
@@ -487,7 +484,7 @@ export const cmsService = {
    * Storefront: resolve by **slug** or **id** (cuid). Only `isActive` pages; blocks filtered to `isActive`.
    * Response order: `id`, `slug`, `title`, `updatedAt`, `blocks`, then **`seo`** (nested object).
    */
-  async getPublicPageBySlugOrId(identifier: string) {
+  async getPublicPageBySlugOrId(identifier: string): Promise<PublicCmsPage | null> {
     const trimmed = identifier.trim();
     if (!trimmed) return null;
     const row = await getPrisma().cmsPage.findFirst({
@@ -529,13 +526,13 @@ export const cmsService = {
         sectionKey,
         content,
       };
-    });
+    }) as PublicCmsPage["blocks"];
 
     return {
       id: row.id,
       slug: row.slug,
       title: row.title,
-      updatedAt: row.updatedAt,
+      updatedAt: row.updatedAt.toISOString(),
       blocks,
       seo: shapePublicCmsPageSeo(row),
     };
