@@ -9,20 +9,14 @@ import type {
   CmsFooterConfig,
   CmsNavigationConfig,
 } from "@/lib/cms/site-content-types";
+import {
+  BLOCK_TYPES,
+  CMS_BLOCK_TYPES,
+  CMS_BLOCK_TYPE_LABELS,
+  type CmsBlockType,
+} from "@/lib/cms/block-types";
 
-// Block types
-export const BLOCK_TYPES = [
-  { type: "hero", label: "Hero Banner" },
-  { type: "categories", label: "Categories Grid" },
-  { type: "brands", label: "Brands Carousel" },
-  { type: "featured_products", label: "Featured Products" },
-  { type: "recommended", label: "Recommended Products" },
-  { type: "editorial", label: "Editorial Section" },
-  { type: "banner", label: "Promotional Banner" },
-  { type: "text_block", label: "Text Block" },
-] as const;
-
-export type CmsBlockType = (typeof BLOCK_TYPES)[number]["type"];
+export { BLOCK_TYPES, CMS_BLOCK_TYPES, CMS_BLOCK_TYPE_LABELS, type CmsBlockType };
 
 export interface CmsLayoutRef {
   id: string;

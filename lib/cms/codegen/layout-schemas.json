@@ -1,0 +1,42 @@
+[
+  {
+    "id": "example-sectioned",
+    "name": "Example: root + nested sections",
+    "rootKey": "section",
+    "schema": {
+      "section": [
+        {
+          "type": "object",
+          "key": "hero_section",
+          "fields": [
+            { "type": "title", "key": "title" },
+            { "type": "description", "key": "subtitle" }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "example-hero-root",
+    "name": "Example: flat hero root key",
+    "rootKey": "hero_section",
+    "schema": {
+      "hero_section": [
+        { "type": "title", "key": "title" },
+        { "type": "badge", "key": "badge" }
+      ]
+    }
+  },
+  {
+    "id": "example-home",
+    "name": "Example: home root (matches common storefront slug sections)",
+    "rootKey": "home",
+    "schema": {
+      "home": [
+        { "type": "badge", "key": "fuck" },
+        { "type": "title", "key": "title" },
+        { "type": "description", "key": "description" }
+      ]
+    }
+  }
+]

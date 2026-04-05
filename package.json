@@ -6,7 +6,8 @@
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "cms:gen-types": "tsx scripts/cms-gen-types.mts",
+    "build": "pnpm cms:gen-types && prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint",
