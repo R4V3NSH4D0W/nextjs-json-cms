@@ -45,13 +45,13 @@ export async function getSession(): Promise<AppSession> {
   }
 
   if (!row) {
-    cookieStore.delete(SESSION_COOKIE_NAME);
+    // Do not call cookieStore.delete() here — Server Components cannot mutate cookies.
+    // Stale cookies are ignored (session is null); clearing is done in logout / route handlers.
     return null;
   }
 
   if (row.expiresAt < new Date()) {
     await prisma.session.delete({ where: { id: token } }).catch(() => {});
-    cookieStore.delete(SESSION_COOKIE_NAME);
     return null;
   }
 
