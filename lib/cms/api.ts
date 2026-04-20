@@ -1,4 +1,4 @@
-import { api } from "@/lib/api/admin-client";
+import { api } from "@/lib/fetcher";
 import {
   PUBLIC_CMS_ANNOUNCEMENTS_API_PATH,
   PUBLIC_CMS_FOOTER_API_PATH,

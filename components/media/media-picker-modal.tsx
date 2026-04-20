@@ -16,7 +16,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { cn, getImageUrl } from "@/lib/shared/utils";
 
-import { api } from "@/lib/api/admin-client";
+import { api } from "@/lib/fetcher";
 import {
   imageFileFromClipboard,
   isPasteTargetEditable,

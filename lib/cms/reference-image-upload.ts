@@ -1,4 +1,4 @@
-import { api } from "@/lib/api/admin-client";
+import { api } from "@/lib/fetcher";
 
 function parseUploadUrl(res: unknown): string | null {
   if (!res || typeof res !== "object") return null;

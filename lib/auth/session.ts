@@ -1,9 +1,7 @@
 import { cookies } from "next/headers";
 
-import { Prisma } from "@/lib/generated/prisma/client";
-import { getPrisma } from "@/lib/server/prisma";
-
-import { SESSION_COOKIE_NAME } from "./constants";
+const SESSION_COOKIE_NAME =
+  process.env.SESSION_COOKIE_NAME ?? "session";
 
 export type AppUser = {
   id: string;
@@ -14,51 +12,38 @@ export type AppSession = {
   user: AppUser;
 } | null;
 
+function getApiUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000"
+  );
+}
+
 /**
- * Current session from httpOnly cookie + Postgres.
- * Use in Server Components, Route Handlers, and Server Actions (not in `proxy.ts`).
+ * Current session — validated by calling the Hono backend's GET /api/auth/me.
+ * Use in Server Components, Route Handlers, and Server Actions.
  */
 export async function getSession(): Promise<AppSession> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
-  const prisma = getPrisma();
-  let row;
   try {
-    row = await prisma.session.findUnique({
-      where: { id: token },
-      include: { user: true },
+    const res = await fetch(`${getApiUrl()}/api/auth/me`, {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      // Disable Next.js caching — session must always be fresh
+      cache: "no-store",
     });
-  } catch (e) {
-    if (
-      e instanceof Prisma.PrismaClientKnownRequestError &&
-      e.code === "P1003"
-    ) {
-      throw new Error(
-        'PostgreSQL database does not exist. Run `pnpm db:ensure` then `pnpm db:migrate` (see README.md).',
-      );
-    }
-    throw e;
-  }
 
-  if (!row) {
-    // Do not call cookieStore.delete() here — Server Components cannot mutate cookies.
-    // Stale cookies are ignored (session is null); clearing is done in logout / route handlers.
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as {
+      success: boolean;
+      user?: AppUser;
+    };
+
+    if (!data.success || !data.user) return null;
+    return { user: data.user };
+  } catch {
     return null;
   }
-
-  if (row.expiresAt < new Date()) {
-    await prisma.session.delete({ where: { id: token } }).catch(() => {});
-    return null;
-  }
-
-  return {
-    user: {
-      id: row.user.id,
-      email: row.user.email,
-    },
-  };
 }

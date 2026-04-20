@@ -1,12 +1,34 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 
-import { getPrisma } from "@/lib/server/prisma";
+async function fetchCount(
+  path: string,
+  cookieHeader: string,
+): Promise<number> {
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000";
+  try {
+    const res = await fetch(`${apiUrl}${path}`, {
+      headers: { cookie: cookieHeader },
+      cache: "no-store",
+    });
+    if (!res.ok) return 0;
+    const data = (await res.json()) as { pages?: unknown[]; layouts?: unknown[] };
+    return (data.pages ?? data.layouts ?? []).length;
+  } catch {
+    return 0;
+  }
+}
 
 export default async function DashboardHomePage() {
-  const prisma = getPrisma();
+  const cookieStore = await cookies();
+  const sessionCookie = process.env.SESSION_COOKIE_NAME ?? "session";
+  const token = cookieStore.get(sessionCookie)?.value ?? "";
+  const cookieHeader = token ? `${sessionCookie}=${token}` : "";
+
   const [cmsPageCount, cmsLayoutCount] = await Promise.all([
-    prisma.cmsPage.count(),
-    prisma.cmsLayout.count(),
+    fetchCount("/api/v1/admin/cms-pages/pages", cookieHeader),
+    fetchCount("/api/v1/admin/cms-pages/layouts", cookieHeader),
   ]);
 
   return (
