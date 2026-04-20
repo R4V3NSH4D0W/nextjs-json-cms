@@ -10,11 +10,12 @@ import {
  * all blocks so non–text_block blocks stay in place and text_blocks follow slot order.
  */
 export async function syncLayoutSlotsToPage(params: {
+  projectSlug: string;
   pageId: string;
   pageSnapshot: CmsPage;
   slots: CmsNewPageLayoutSlot[];
 }): Promise<void> {
-  const { pageId, pageSnapshot, slots: rawSlots } = params;
+  const { projectSlug, pageId, pageSnapshot, slots: rawSlots } = params;
   const slots = dedupeSlotBlockIds(rawSlots);
   const layoutSlots = slots.filter((s) => s.layoutId);
 
@@ -28,7 +29,7 @@ export async function syncLayoutSlotsToPage(params: {
 
   for (const bid of startTextBlockIds) {
     if (!keepBlockIds.has(bid)) {
-      await cmsApi.deleteBlock(bid);
+      await cmsApi.deleteBlock(projectSlug, bid);
     }
   }
 
@@ -45,14 +46,14 @@ export async function syncLayoutSlotsToPage(params: {
     );
     const blockActive = slot.isActive !== false;
     if (slot.blockId) {
-      await cmsApi.updateBlock(slot.blockId, {
+      await cmsApi.updateBlock(projectSlug, slot.blockId, {
         type: "text_block",
         config,
         isActive: blockActive,
       });
       slotIdToBlockId.set(slot.id, slot.blockId);
     } else {
-      const res = await cmsApi.addBlock(pageId, {
+      const res = await cmsApi.addBlock(projectSlug, pageId, {
         type: "text_block",
         config,
         isActive: blockActive,
@@ -61,7 +62,7 @@ export async function syncLayoutSlotsToPage(params: {
     }
   }
 
-  const fresh = await cmsApi.getPage(pageId);
+  const fresh = await cmsApi.getPage(projectSlug, pageId);
   const sorted = [...fresh.page.blocks].sort(
     (a, b) => a.displayOrder - b.displayOrder
   );
@@ -107,5 +108,5 @@ export async function syncLayoutSlotsToPage(params: {
     );
   }
 
-  await cmsApi.reorderBlocks(pageId, finalOrder);
+  await cmsApi.reorderBlocks(projectSlug, pageId, finalOrder);
 }

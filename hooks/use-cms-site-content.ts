@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@/lib/shared/react-query";
 import { toast } from "sonner";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { cmsApi } from "@/lib/cms/api";
 import {
   defaultAnnouncementsConfig,
@@ -22,35 +23,38 @@ import {
 } from "@/lib/cms/site-content-storage";
 
 export function useCmsNavigationConfig() {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-site", "navigation"],
+    queryKey: ["cms-site", currentProject?.slug, "navigation"],
     queryFn: async () => {
       try {
-        const res = await cmsApi.getNavigationConfig();
+        const res = await cmsApi.getNavigationConfig(currentProject!.slug);
         const n = normalizeNavigationConfig(res.navigation);
-        saveNavigationToStorage(n);
+        saveNavigationToStorage(currentProject!.slug, n);
         return n;
       } catch {
-        const local = loadNavigationFromStorage();
+        const local = loadNavigationFromStorage(currentProject!.slug);
         if (local) return normalizeNavigationConfig(local);
         return defaultNavigationConfig();
       }
     },
+    enabled: !!currentProject,
   });
 }
 
 export function useUpdateCmsNavigationConfig() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CmsNavigationConfig) => {
       const normalized = normalizeNavigationConfig(data);
       try {
-        const res = await cmsApi.putNavigationConfig(normalized);
+        const res = await cmsApi.putNavigationConfig(currentProject!.slug, normalized);
         const n = normalizeNavigationConfig(res.navigation);
-        saveNavigationToStorage(n);
+        saveNavigationToStorage(currentProject!.slug, n);
         return { source: "api" as const, config: n };
       } catch {
-        saveNavigationToStorage(normalized);
+        saveNavigationToStorage(currentProject!.slug, normalized);
         return { source: "local" as const, config: normalized };
       }
     },
@@ -66,35 +70,38 @@ export function useUpdateCmsNavigationConfig() {
 }
 
 export function useCmsFooterConfig() {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-site", "footer"],
+    queryKey: ["cms-site", currentProject?.slug, "footer"],
     queryFn: async () => {
       try {
-        const res = await cmsApi.getFooterConfig();
+        const res = await cmsApi.getFooterConfig(currentProject!.slug);
         const f = normalizeFooterConfig(res.footer);
-        saveFooterToStorage(f);
+        saveFooterToStorage(currentProject!.slug, f);
         return f;
       } catch {
-        const local = loadFooterFromStorage();
+        const local = loadFooterFromStorage(currentProject!.slug);
         if (local) return normalizeFooterConfig(local);
         return defaultFooterConfig();
       }
     },
+    enabled: !!currentProject,
   });
 }
 
 export function useUpdateCmsFooterConfig() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CmsFooterConfig) => {
       const normalized = normalizeFooterConfig(data);
       try {
-        const res = await cmsApi.putFooterConfig(normalized);
+        const res = await cmsApi.putFooterConfig(currentProject!.slug, normalized);
         const f = normalizeFooterConfig(res.footer);
-        saveFooterToStorage(f);
+        saveFooterToStorage(currentProject!.slug, f);
         return { source: "api" as const, config: f };
       } catch {
-        saveFooterToStorage(normalized);
+        saveFooterToStorage(currentProject!.slug, normalized);
         return { source: "local" as const, config: normalized };
       }
     },
@@ -110,35 +117,38 @@ export function useUpdateCmsFooterConfig() {
 }
 
 export function useCmsAnnouncementsConfig() {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-site", "announcements"],
+    queryKey: ["cms-site", currentProject?.slug, "announcements"],
     queryFn: async () => {
       try {
-        const res = await cmsApi.getAnnouncementsConfig();
+        const res = await cmsApi.getAnnouncementsConfig(currentProject!.slug);
         const a = normalizeAnnouncementsConfig(res.announcements);
-        saveAnnouncementsToStorage(a);
+        saveAnnouncementsToStorage(currentProject!.slug, a);
         return a;
       } catch {
-        const local = loadAnnouncementsFromStorage();
+        const local = loadAnnouncementsFromStorage(currentProject!.slug);
         if (local) return normalizeAnnouncementsConfig(local);
         return defaultAnnouncementsConfig();
       }
     },
+    enabled: !!currentProject,
   });
 }
 
 export function useUpdateCmsAnnouncementsConfig() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CmsAnnouncementsConfig) => {
       const normalized = normalizeAnnouncementsConfig(data);
       try {
-        const res = await cmsApi.putAnnouncementsConfig(normalized);
+        const res = await cmsApi.putAnnouncementsConfig(currentProject!.slug, normalized);
         const a = normalizeAnnouncementsConfig(res.announcements);
-        saveAnnouncementsToStorage(a);
+        saveAnnouncementsToStorage(currentProject!.slug, a);
         return { source: "api" as const, config: a };
       } catch {
-        saveAnnouncementsToStorage(normalized);
+        saveAnnouncementsToStorage(currentProject!.slug, normalized);
         return { source: "local" as const, config: normalized };
       }
     },

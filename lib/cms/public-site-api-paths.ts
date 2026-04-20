@@ -7,11 +7,21 @@
  * `{ success: true, enabled: false }` — no layout keys. Not the nested admin document shape.
  */
 
-export const PUBLIC_CMS_NAVIGATION_API_PATH = "/api/v1/cms/navigation";
+export function publicCmsNavigationApiPath(projectSlug: string) {
+  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/navigation`;
+}
 
-export const PUBLIC_CMS_FOOTER_API_PATH = "/api/v1/cms/footer";
+export function publicCmsFooterApiPath(projectSlug: string) {
+  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/footer`;
+}
 
-export const PUBLIC_CMS_ANNOUNCEMENTS_API_PATH = "/api/v1/cms/announcements";
+export function publicCmsAnnouncementsApiPath(projectSlug: string) {
+  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/announcements`;
+}
+
+export function publicCmsPageApiPath(projectSlug: string, slugOrId: string) {
+  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/pages/${encodeURIComponent(slugOrId)}`;
+}
 
 /** Short label for long API paths (middle ellipsis). */
 export function trimPublicApiPathDisplay(path: string, max = 42): string {

@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { Loader2, Menu } from "lucide-react";
 import { CmsPublicApiLink } from "@/components/cms/cms-public-api-link";
@@ -28,7 +29,7 @@ import { cmsApi, type CmsLayoutResponse } from "@/lib/cms/api";
 import { validateSiteLayoutSectionsOptional } from "@/lib/cms/page-slots";
 import type { CmsNavigationConfig } from "@/lib/cms/site-content-types";
 import type { CmsNewPageLayoutSlot } from "@/lib/cms/new-page-draft";
-import { PUBLIC_CMS_NAVIGATION_API_PATH } from "@/lib/cms/public-site-api-paths";
+import { publicCmsNavigationApiPath } from "@/lib/cms/public-site-api-paths";
 import { toast } from "sonner";
 
 const NAV_PATH = "/dashboard/cms/navigation";
@@ -79,6 +80,7 @@ function NavigationLayoutSectionsTab({
 }
 
 export default function CmsNavigationPage() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const { data, isLoading } = useCmsNavigationConfig();
   const update = useUpdateCmsNavigationConfig();
@@ -98,7 +100,7 @@ export default function CmsNavigationPage() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
       }
     );
@@ -140,7 +142,7 @@ export default function CmsNavigationPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={PUBLIC_CMS_NAVIGATION_API_PATH}
+            apiPath={publicCmsNavigationApiPath(currentProject?.slug ?? "main")}
             titleHint="Public JSON: success + layout configValues keys (flat), not nested sections."
           />
         </div>

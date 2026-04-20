@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ExternalLink, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,18 +21,17 @@ import {
 import { useCmsPages, useDeleteCmsPage } from "@/hooks/use-cms";
 import type { CmsPage } from "@/lib/cms/api";
 import { absoluteApiUrl } from "@/lib/cms/absolute-url";
-import { trimPublicApiPathDisplay } from "@/lib/cms/public-site-api-paths";
+import {
+  publicCmsPageApiPath,
+  trimPublicApiPathDisplay,
+} from "@/lib/cms/public-site-api-paths";
 
 /**
  * Public storefront CMS route (no auth). Same as headless / Next.js public fetch.
  * @see GET /api/v1/cms/pages/:slugOrId — slug or page id (cuid).
  */
-function publicCmsPageApiPath(page: { slug: string; id: string }): string {
-  const slugOrId = page.slug?.trim() || page.id;
-  return `/api/v1/cms/pages/${encodeURIComponent(slugOrId)}`;
-}
-
 function Page() {
+  const { currentProject } = useCurrentProject();
   const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
@@ -147,7 +147,10 @@ function Page() {
               loadingRows()
             ) : rows.length ? (
               rows.map((row) => {
-                const apiPath = publicCmsPageApiPath(row);
+                const apiPath = publicCmsPageApiPath(
+                  currentProject?.slug ?? "main",
+                  row.slug?.trim() || row.id,
+                );
                 const apiHref = absoluteApiUrl(apiPath);
                 return (
                 <TableRow

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@/lib/shared/react-query";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import {
   ArrowLeft,
   ClipboardPaste,
@@ -55,6 +56,7 @@ interface MediaLibraryResponse {
 }
 
 export default function MediaLibraryPage() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const [currentPath, setCurrentPath] = useState("/");
   const [newFolderName, setNewFolderName] = useState("");
@@ -65,15 +67,16 @@ export default function MediaLibraryPage() {
   const { data, isLoading } = useQuery<MediaLibraryResponse>({
     queryKey: ["media-gallery", currentPath],
     queryFn: async () => {
-      return api.get<MediaLibraryResponse>(`/api/v1/admin/media/gallery/list`, {
+      return api.get<MediaLibraryResponse>(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/list`, {
         params: { folder: currentPath },
       });
     },
+    enabled: !!currentProject,
   });
 
   const createFolderMutation = useMutation({
     mutationFn: async (name: string) => {
-      return api.post(`/api/v1/admin/media/gallery/folder`, {
+      return api.post(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/folder`, {
         name,
         parent: currentPath,
       });
@@ -91,9 +94,7 @@ export default function MediaLibraryPage() {
     mutationFn: async (folderName: string) => {
       const fullPath =
         currentPath === "/" ? folderName : `${currentPath}/${folderName}`;
-      return api.delete(
-        `/api/v1/admin/media/gallery/folder?folder=${encodeURIComponent(fullPath)}`,
-      );
+      return api.delete(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/folder?folder=${encodeURIComponent(fullPath)}`);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["media-gallery"] });
@@ -106,10 +107,7 @@ export default function MediaLibraryPage() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      return api.post(
-        `/api/v1/admin/media/gallery/upload?folder=${encodeURIComponent(currentPath)}`,
-        formData,
-      );
+      return api.post(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/upload?folder=${encodeURIComponent(currentPath)}`, formData);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["media-gallery"] });
@@ -143,9 +141,7 @@ export default function MediaLibraryPage() {
 
   const deleteFileMutation = useMutation({
     mutationFn: async (file: { id: string; url: string }) => {
-      return api.delete(
-        `/api/v1/admin/media/gallery/file?url=${encodeURIComponent(file.url)}`,
-      );
+      return api.delete(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/file?url=${encodeURIComponent(file.url)}`);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["media-gallery"] });

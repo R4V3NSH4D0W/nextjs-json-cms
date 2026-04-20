@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { Loader2, Megaphone } from "lucide-react";
 import { CmsPublicApiLink } from "@/components/cms/cms-public-api-link";
@@ -30,7 +31,7 @@ import { cmsApi, type CmsLayoutResponse } from "@/lib/cms/api";
 import { validateSiteLayoutSectionsOptional } from "@/lib/cms/page-slots";
 import type { CmsAnnouncementsConfig } from "@/lib/cms/site-content-types";
 import type { CmsNewPageLayoutSlot } from "@/lib/cms/new-page-draft";
-import { PUBLIC_CMS_ANNOUNCEMENTS_API_PATH } from "@/lib/cms/public-site-api-paths";
+import { publicCmsAnnouncementsApiPath } from "@/lib/cms/public-site-api-paths";
 import { toast } from "sonner";
 
 const ANNOUNCEMENTS_PATH = "/dashboard/cms/announcements";
@@ -82,6 +83,7 @@ function AnnouncementsLayoutSectionsTab({
 }
 
 export default function CmsAnnouncementsPage() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const { data, isLoading } = useCmsAnnouncementsConfig();
   const update = useUpdateCmsAnnouncementsConfig();
@@ -101,7 +103,7 @@ export default function CmsAnnouncementsPage() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
       }
     );
@@ -142,7 +144,7 @@ export default function CmsAnnouncementsPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={PUBLIC_CMS_ANNOUNCEMENTS_API_PATH}
+            apiPath={publicCmsAnnouncementsApiPath(currentProject?.slug ?? "main")}
             titleHint="Public JSON: success + layout root keys from configValues (e.g. announcement_under_construction)."
           />
         </div>

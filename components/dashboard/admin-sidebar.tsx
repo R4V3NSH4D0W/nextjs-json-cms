@@ -11,8 +11,11 @@ import {
   PanelBottom,
   Megaphone,
   Images,
+  FolderKanban,
 } from "lucide-react";
 
+import { useCurrentProject } from "@/components/providers/current-project-provider";
+import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { cn } from "@/lib/shared/utils";
 import {
   Sidebar,
@@ -29,6 +32,7 @@ import {
 
 const mainNav = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/media", label: "Media", icon: Images },
 ] as const;
 
@@ -49,15 +53,23 @@ function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/dashboard";
   if (href === "/dashboard/cms") return pathname === "/dashboard/cms";
   if (href === "/dashboard/media")
-    return pathname === "/dashboard/media" || pathname.startsWith("/dashboard/media/");
+    return (
+      pathname === "/dashboard/media" ||
+      pathname.startsWith("/dashboard/media/")
+    );
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { currentProject } = useCurrentProject();
+  const { isAdmin } = useCurrentUser();
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar" collapsible="icon">
+    <Sidebar
+      className="border-r border-sidebar-border bg-sidebar"
+      collapsible="icon"
+    >
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-2">
           <div
@@ -68,9 +80,11 @@ export function AdminSidebar() {
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              CMS
+              Projects CMS
             </p>
-            <p className="text-xs text-muted-foreground">Admin</p>
+            <p className="text-xs text-muted-foreground">
+              {currentProject?.name ?? (isAdmin ? "Admin" : "Member")}
+            </p>
           </div>
         </div>
       </SidebarHeader>
@@ -108,7 +122,7 @@ export function AdminSidebar() {
 
         <SidebarGroup className="mt-4">
           <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-            Storefront CMS
+            Project Content
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

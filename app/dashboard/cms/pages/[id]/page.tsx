@@ -13,6 +13,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { CmsPageSeoEditor } from "@/components/cms/cms-page-seo-editor";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ import {
 } from "@/lib/cms/cms-page-draft-data";
 
 function CmsPageEditContent() {
+  const { currentProject } = useCurrentProject();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -191,7 +193,7 @@ function CmsPageEditContent() {
         ]);
         const layout =
           cached?.layout ??
-          (await cmsApi.getLayout(addLayoutId)).layout;
+          (await cmsApi.getLayout(currentProject!.slug, addLayoutId)).layout;
         const schema = layout?.schema;
         if (schema && typeof schema === "object" && !Array.isArray(schema)) {
           templatePayload = buildPayloadTemplateFromSchema(
@@ -272,7 +274,7 @@ function CmsPageEditContent() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
       }
     );
@@ -291,7 +293,7 @@ function CmsPageEditContent() {
           slots,
           seo,
         });
-        await cmsApi.updatePage(id, { draftData: draftPayload });
+        await cmsApi.updatePage(currentProject!.slug, id, { draftData: draftPayload });
         await queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
         await queryClient.invalidateQueries({ queryKey: ["cms-pages", id] });
         toast.success(
@@ -301,7 +303,7 @@ function CmsPageEditContent() {
       }
 
       const snapshot = page;
-      await cmsApi.updatePage(id, {
+      await cmsApi.updatePage(currentProject!.slug, id, {
         title: title.trim(),
         slug: slug.trim() || undefined,
         published,
@@ -312,6 +314,7 @@ function CmsPageEditContent() {
       });
 
       await syncLayoutSlotsToPage({
+        projectSlug: currentProject!.slug,
         pageId: id,
         pageSnapshot: snapshot,
         slots,

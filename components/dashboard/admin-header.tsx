@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { LogOut, PanelLeft } from "lucide-react";
 
+import { useCurrentProject } from "@/components/providers/current-project-provider";
+import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { logoutAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +20,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function AdminHeader({ userEmail }: { userEmail: string }) {
   const { open } = useSidebar();
+  const { currentProject, projects } = useCurrentProject();
+  const { isAdmin } = useCurrentUser();
   const initial = userEmail.slice(0, 2).toUpperCase();
 
   return (
@@ -30,10 +34,41 @@ export function AdminHeader({ userEmail }: { userEmail: string }) {
       )}
       <div className="flex flex-1 items-center justify-between gap-4">
         <p className="text-sm font-medium text-muted-foreground">
-          Dashboard
+          {currentProject ? `Project: ${currentProject.name}` : "Dashboard"}
         </p>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+          {projects.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:inline-flex"
+                >
+                  {currentProject?.name ?? "Choose project"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>Switch project</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {projects.map((project) => (
+                  <DropdownMenuItem key={project.id} asChild>
+                    <Link
+                      href={`/dashboard/projects/select?slug=${encodeURIComponent(project.slug)}&redirect=/dashboard`}
+                    >
+                      {project.name}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="hidden sm:inline-flex"
+          >
             <Link href="/">Home</Link>
           </Button>
           <DropdownMenu>
@@ -50,13 +85,20 @@ export function AdminHeader({ userEmail }: { userEmail: string }) {
                 <span className="hidden max-w-[140px] truncate text-sm font-medium md:inline">
                   {userEmail}
                 </span>
+                <span className="hidden rounded bg-muted px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground md:inline">
+                  {isAdmin ? "Admin" : "Member"}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">Signed in</span>
-                  <span className="truncate text-sm font-medium">{userEmail}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Signed in
+                  </span>
+                  <span className="truncate text-sm font-medium">
+                    {userEmail}
+                  </span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
