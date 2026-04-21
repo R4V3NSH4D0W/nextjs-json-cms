@@ -6,11 +6,7 @@
 
 import type {
   CmsPage,
-  CmsBlock,
-  CmsLayout,
-  CmsLayoutListItem,
   CmsPageResponse,
-  CmsPagesResponse,
   CmsBlockResponse,
   CmsLayoutResponse,
   CmsLayoutsResponse,
@@ -40,28 +36,28 @@ type Ok<T> = { success: true } & T;
 
 export const cmsPageApi = {
   /** List all pages (admin, auth required). */
-  list: () =>
-    api.get<Ok<{ pages: CmsPage[] }>>('/api/v1/admin/cms-pages/pages', {
-      next: { tags: ['admin-cms-pages'] },
+  list: (projectSlug: string) =>
+    api.get<Ok<{ pages: CmsPage[] }>>(`/api/v1/admin/projects/${projectSlug}/cms/pages`, {
+      next: { tags: [`admin-cms-pages-${projectSlug}`] },
     }),
 
   /** Get a single page by ID (admin, auth required). */
-  get: (pageId: string) =>
-    api.get<CmsPageResponse>(`/api/v1/admin/cms-pages/pages/${pageId}`, {
+  get: (projectSlug: string, pageId: string) =>
+    api.get<CmsPageResponse>(`/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}`, {
       next: { tags: [`admin-cms-page-${pageId}`] },
     }),
 
   /** Create a new page. */
-  create: (body: CmsPageCreateBody) =>
-    api.post<CmsPageResponse>('/api/v1/admin/cms-pages/pages', body),
+  create: (projectSlug: string, body: CmsPageCreateBody) =>
+    api.post<CmsPageResponse>(`/api/v1/admin/projects/${projectSlug}/cms/pages`, body),
 
   /** Partially update a page. */
-  update: (pageId: string, body: CmsPageUpdateBody) =>
-    api.patch<CmsPageResponse>(`/api/v1/admin/cms-pages/pages/${pageId}`, body),
+  update: (projectSlug: string, pageId: string, body: CmsPageUpdateBody) =>
+    api.patch<CmsPageResponse>(`/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}`, body),
 
   /** Delete a page permanently. */
-  remove: (pageId: string) =>
-    api.delete<Ok<Record<never, never>>>(`/api/v1/admin/cms-pages/pages/${pageId}`),
+  remove: (projectSlug: string, pageId: string) =>
+    api.delete<Ok<Record<never, never>>>(`/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}`),
 };
 
 // ─── Admin — CMS Blocks ───────────────────────────────────────────────────────
@@ -69,16 +65,18 @@ export const cmsPageApi = {
 export const cmsBlockApi = {
   /** Add a new block to a page. */
   create: (
+    projectSlug: string,
     pageId: string,
     body: { type: string; config?: unknown; isActive?: boolean },
   ) =>
     api.post<CmsBlockResponse>(
-      `/api/v1/admin/cms-pages/pages/${pageId}/blocks`,
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}/blocks`,
       body,
     ),
 
   /** Update a block's type, config, order, or visibility. */
   update: (
+    projectSlug: string,
     blockId: string,
     body: Partial<{
       type: string;
@@ -88,20 +86,20 @@ export const cmsBlockApi = {
     }>,
   ) =>
     api.patch<CmsBlockResponse>(
-      `/api/v1/admin/cms-pages/blocks/${blockId}`,
+      `/api/v1/admin/projects/${projectSlug}/cms/blocks/${blockId}`,
       body,
     ),
 
   /** Delete a block. */
-  remove: (blockId: string) =>
+  remove: (projectSlug: string, blockId: string) =>
     api.delete<Ok<Record<never, never>>>(
-      `/api/v1/admin/cms-pages/blocks/${blockId}`,
+      `/api/v1/admin/projects/${projectSlug}/cms/blocks/${blockId}`,
     ),
 
   /** Reorder all blocks on a page in one shot. */
-  reorder: (pageId: string, orderedBlockIds: string[]) =>
+  reorder: (projectSlug: string, pageId: string, orderedBlockIds: string[]) =>
     api.post<CmsReorderResponse>(
-      `/api/v1/admin/cms-pages/pages/${pageId}/reorder`,
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}/reorder`,
       { orderedBlockIds },
     ),
 };
@@ -110,27 +108,28 @@ export const cmsBlockApi = {
 
 export const cmsLayoutApi = {
   /** List all layouts (summary fields only). */
-  list: () =>
-    api.get<CmsLayoutsResponse>('/api/v1/admin/cms-pages/layouts', {
-      next: { tags: ['admin-cms-layouts'] },
+  list: (projectSlug: string) =>
+    api.get<CmsLayoutsResponse>(`/api/v1/admin/projects/${projectSlug}/cms/layouts`, {
+      next: { tags: [`admin-cms-layouts-${projectSlug}`] },
     }),
 
   /** Get a full layout by ID (includes schema). */
-  get: (id: string) =>
-    api.get<CmsLayoutResponse>(`/api/v1/admin/cms-pages/layouts/${id}`, {
+  get: (projectSlug: string, id: string) =>
+    api.get<CmsLayoutResponse>(`/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`, {
       next: { tags: [`admin-cms-layout-${id}`] },
     }),
 
   /** Create a new layout. */
-  create: (body: {
+  create: (projectSlug: string, body: {
     name: string;
     rootKey: string;
     schema: unknown;
     referenceImageUrl?: string | null;
-  }) => api.post<CmsLayoutResponse>('/api/v1/admin/cms-pages/layouts', body),
+  }) => api.post<CmsLayoutResponse>(`/api/v1/admin/projects/${projectSlug}/cms/layouts`, body),
 
   /** Update an existing layout. */
   update: (
+    projectSlug: string,
     id: string,
     body: Partial<{
       name: string;
@@ -139,12 +138,12 @@ export const cmsLayoutApi = {
       referenceImageUrl: string | null;
     }>,
   ) =>
-    api.patch<CmsLayoutResponse>(`/api/v1/admin/cms-pages/layouts/${id}`, body),
+    api.patch<CmsLayoutResponse>(`/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`, body),
 
   /** Delete a layout. */
-  remove: (id: string) =>
+  remove: (projectSlug: string, id: string) =>
     api.delete<Ok<Record<never, never>>>(
-      `/api/v1/admin/cms-pages/layouts/${id}`,
+      `/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`,
     ),
 };
 
@@ -152,38 +151,38 @@ export const cmsLayoutApi = {
 
 export const adminSiteChromeApi = {
   // Navigation
-  getNavigation: () =>
+  getNavigation: (projectSlug: string) =>
     api.get<Ok<{ navigation: CmsNavigationConfig }>>(
-      '/api/v1/admin/cms-pages/navigation',
-      { next: { tags: ['admin-navigation'] } },
+      `/api/v1/admin/projects/${projectSlug}/cms/navigation`,
+      { next: { tags: [`admin-navigation-${projectSlug}`] } },
     ),
-  putNavigation: (payload: CmsNavigationConfig) =>
+  putNavigation: (projectSlug: string, payload: CmsNavigationConfig) =>
     api.put<Ok<{ navigation: CmsNavigationConfig }>>(
-      '/api/v1/admin/cms-pages/navigation',
+      `/api/v1/admin/projects/${projectSlug}/cms/navigation`,
       payload,
     ),
 
   // Footer
-  getFooter: () =>
+  getFooter: (projectSlug: string) =>
     api.get<Ok<{ footer: CmsFooterConfig }>>(
-      '/api/v1/admin/cms-pages/footer',
-      { next: { tags: ['admin-footer'] } },
+      `/api/v1/admin/projects/${projectSlug}/cms/footer`,
+      { next: { tags: [`admin-footer-${projectSlug}`] } },
     ),
-  putFooter: (payload: CmsFooterConfig) =>
+  putFooter: (projectSlug: string, payload: CmsFooterConfig) =>
     api.put<Ok<{ footer: CmsFooterConfig }>>(
-      '/api/v1/admin/cms-pages/footer',
+      `/api/v1/admin/projects/${projectSlug}/cms/footer`,
       payload,
     ),
 
   // Announcements
-  getAnnouncements: () =>
+  getAnnouncements: (projectSlug: string) =>
     api.get<Ok<{ announcements: CmsAnnouncementsConfig }>>(
-      '/api/v1/admin/cms-pages/announcements',
-      { next: { tags: ['admin-announcements'] } },
+      `/api/v1/admin/projects/${projectSlug}/cms/announcements`,
+      { next: { tags: [`admin-announcements-${projectSlug}`] } },
     ),
-  putAnnouncements: (payload: CmsAnnouncementsConfig) =>
+  putAnnouncements: (projectSlug: string, payload: CmsAnnouncementsConfig) =>
     api.put<Ok<{ announcements: CmsAnnouncementsConfig }>>(
-      '/api/v1/admin/cms-pages/announcements',
+      `/api/v1/admin/projects/${projectSlug}/cms/announcements`,
       payload,
     ),
 };
@@ -198,38 +197,38 @@ export type GalleryListResponse = Ok<{
 
 export const mediaApi = {
   /** List files and sub-folders in a gallery folder. */
-  list: (folder?: string) =>
-    api.get<GalleryListResponse>('/api/v1/admin/media/gallery/list', {
+  list: (projectSlug: string, folder?: string) =>
+    api.get<GalleryListResponse>(`/api/v1/admin/projects/${projectSlug}/media/gallery/list`, {
       params: folder ? { folder } : undefined,
-      next: { tags: ['admin-media-gallery'] },
+      next: { tags: [`admin-media-gallery-${projectSlug}`] },
     }),
 
   /** Upload a file to the gallery. Pass `folder` query param to place it in a subfolder. */
-  upload: (file: FormData, folder?: string) =>
+  upload: (projectSlug: string, file: FormData, folder?: string) =>
     api.post<Ok<{ url: string; data: { url: string }; file: { url: string } }>>(
       folder
-        ? `/api/v1/admin/media/gallery/upload?folder=${encodeURIComponent(folder)}`
-        : '/api/v1/admin/media/gallery/upload',
+        ? `/api/v1/admin/projects/${projectSlug}/media/gallery/upload?folder=${encodeURIComponent(folder)}`
+        : `/api/v1/admin/projects/${projectSlug}/media/gallery/upload`,
       file,
     ),
 
   /** Create a new folder. */
-  createFolder: (name: string, parent?: string) =>
+  createFolder: (projectSlug: string, name: string, parent?: string) =>
     api.post<Ok<{ path: string }>>(
-      '/api/v1/admin/media/gallery/folder',
+      `/api/v1/admin/projects/${projectSlug}/media/gallery/folder`,
       { name, parent },
     ),
 
   /** Delete a folder and its contents. */
-  deleteFolder: (folder: string) =>
+  deleteFolder: (projectSlug: string, folder: string) =>
     api.delete<Ok<Record<never, never>>>(
-      `/api/v1/admin/media/gallery/folder?folder=${encodeURIComponent(folder)}`,
+      `/api/v1/admin/projects/${projectSlug}/media/gallery/folder?folder=${encodeURIComponent(folder)}`,
     ),
 
   /** Delete a single file by its public URL. */
-  deleteFile: (url: string) =>
+  deleteFile: (projectSlug: string, url: string) =>
     api.delete<Ok<Record<never, never>>>(
-      `/api/v1/admin/media/gallery/file?url=${encodeURIComponent(url)}`,
+      `/api/v1/admin/projects/${projectSlug}/media/gallery/file?url=${encodeURIComponent(url)}`,
     ),
 };
 

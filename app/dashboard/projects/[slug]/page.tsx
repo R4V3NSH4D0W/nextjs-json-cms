@@ -6,23 +6,13 @@ import {
   useQuery,
   useQueryClient,
 } from "@/lib/shared/react-query";
-import {
-  type ServiceKey,
-  projectsApi,
-  type ProjectSummary,
-  type ProjectToken,
-  type ProjectMember,
-  type ServiceGrantSummary,
-  type ProjectUserDirectoryEntry,
-} from "@/lib/projects/api";
+import { type FeatureKey, projectsApi } from "@/lib/projects/api";
 import {
   ProjectGovernanceCard,
   ProjectProfileCard,
   ProjectSettingsHero,
-  ProjectSummaryStats,
   ProjectTokensCard,
 } from "@/components/dashboard/projects/project-settings-sections";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { useCurrentProject } from "@/components/providers/current-project-provider";
@@ -44,8 +34,8 @@ export default function ProjectSettingsPage({
   const [handoverEmail, setHandoverEmail] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
-  const [memberSelectedServicesByUser, setMemberSelectedServicesByUser] =
-    useState<Record<string, ServiceKey[]>>({});
+  const [memberSelectedFeaturesByUser, setMemberSelectedFeaturesByUser] =
+    useState<Record<string, FeatureKey[]>>({});
   const [fieldOverridesBySlug, setFieldOverridesBySlug] = useState<
     Record<
       string,
@@ -58,37 +48,31 @@ export default function ProjectSettingsPage({
     >
   >({});
 
-  const projectQuery = useQuery<{ success: true; project: ProjectSummary }>({
+  const projectQuery = useQuery({
     queryKey: ["project", slug],
     queryFn: () => projectsApi.get(slug),
     enabled: !!slug,
   });
 
-  const tokensQuery = useQuery<{ success: true; tokens: ProjectToken[] }>({
+  const tokensQuery = useQuery({
     queryKey: ["project-tokens", slug],
     queryFn: () => projectsApi.listTokens(slug),
     enabled: !!slug,
   });
 
-  const membersQuery = useQuery<{ success: true; members: ProjectMember[] }>({
+  const membersQuery = useQuery({
     queryKey: ["project-members", slug],
     queryFn: () => projectsApi.listMembers(slug),
     enabled: !!slug && canManageProject,
   });
 
-  const servicesQuery = useQuery<{
-    success: true;
-    services: ServiceGrantSummary[];
-  }>({
-    queryKey: ["project-services", slug],
-    queryFn: () => projectsApi.listProjectServices(slug),
+  const featuresQuery = useQuery({
+    queryKey: ["project-features", slug],
+    queryFn: () => projectsApi.listProjectFeatures(slug),
     enabled: !!slug && canManageProject,
   });
 
-  const usersQuery = useQuery<{
-    success: true;
-    users: ProjectUserDirectoryEntry[];
-  }>({
+  const usersQuery = useQuery({
     queryKey: ["project-users", slug],
     queryFn: () => projectsApi.listProjectUsers(slug),
     enabled: !!slug && canManageProject,
@@ -113,12 +97,12 @@ export default function ProjectSettingsPage({
     return { ...baseFields, ...currentFieldOverrides };
   }, [baseFields, fieldOverridesBySlug, slug]);
 
-  const enabledProjectServiceKeys = useMemo(
+  const enabledProjectFeatureKeys = useMemo(
     () =>
-      (servicesQuery.data?.services ?? [])
-        .filter((service) => service.enabledForProject)
-        .map((service) => service.key),
-    [servicesQuery.data?.services],
+      (featuresQuery.data?.features ?? [])
+        .filter((feature) => feature.enabledForProject)
+        .map((feature) => feature.key),
+    [featuresQuery.data?.features],
   );
 
   const updateProject = useMutation({
@@ -213,57 +197,57 @@ export default function ProjectSettingsPage({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const toggleProjectService = useMutation({
+  const toggleProjectFeature = useMutation({
     mutationFn: ({
-      serviceKey,
+      featureKey,
       enabled,
     }: {
-      serviceKey: ServiceKey;
+      featureKey: FeatureKey;
       enabled: boolean;
-    }) => projectsApi.setProjectService(slug, serviceKey, enabled),
+    }) => projectsApi.setProjectFeature(slug, featureKey, enabled),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["project-services", slug],
+        queryKey: ["project-features", slug],
       });
-      toast.success("Project service updated");
+      toast.success("Project feature updated");
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const grantMemberServices = useMutation({
+  const grantMemberFeatures = useMutation({
     mutationFn: ({
       userId,
-      serviceKeys,
+      featureKeys,
     }: {
       userId: string;
-      serviceKeys: ServiceKey[];
-    }) => projectsApi.grantMemberServices(slug, userId, serviceKeys),
+      featureKeys: FeatureKey[];
+    }) => projectsApi.grantMemberFeatures(slug, userId, featureKeys),
     onSuccess: async (_, vars) => {
-      setMemberSelectedServicesByUser((prev) => ({
+      setMemberSelectedFeaturesByUser((prev) => ({
         ...prev,
         [vars.userId]: [],
       }));
       await queryClient.invalidateQueries({
         queryKey: ["project-members", slug],
       });
-      toast.success("Member services provisioned");
+      toast.success("Member feature grants updated");
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const revokeMemberService = useMutation({
+  const revokeMemberFeature = useMutation({
     mutationFn: ({
       userId,
-      serviceKey,
+      featureKey,
     }: {
       userId: string;
-      serviceKey: ServiceKey;
-    }) => projectsApi.revokeMemberService(slug, userId, serviceKey),
+      featureKey: FeatureKey;
+    }) => projectsApi.revokeMemberFeature(slug, userId, featureKey),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["project-members", slug],
       });
-      toast.success("Service revoked");
+      toast.success("Feature revoked");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -282,140 +266,94 @@ export default function ProjectSettingsPage({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  function toggleSelectedService(userId: string, serviceKey: ServiceKey) {
-    setMemberSelectedServicesByUser((prev) => {
+  function toggleSelectedFeature(userId: string, featureKey: FeatureKey) {
+    setMemberSelectedFeaturesByUser((prev) => {
       const existing = prev[userId] ?? [];
-      const next = existing.includes(serviceKey)
-        ? existing.filter((key) => key !== serviceKey)
-        : [...existing, serviceKey];
+      const next = existing.includes(featureKey)
+        ? existing.filter((key) => key !== featureKey)
+        : [...existing, featureKey];
       return { ...prev, [userId]: next };
     });
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pb-20">
-      <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-top-4 duration-700">
-        <ProjectSettingsHero
-          projectName={projectName}
-          projectSlug={slug}
-          isAdmin={isAdmin}
-          canManageProject={canManageProject}
-          memberRole={memberRole}
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <ProjectSettingsHero
+        projectName={projectName}
+        projectSlug={slug}
+        isAdmin={isAdmin}
+        canManageProject={canManageProject}
+        memberRole={memberRole}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
+        <ProjectProfileCard
+          fields={fields}
+          onFieldChange={(key, value) =>
+            setFieldOverridesBySlug((prev) => ({
+              ...prev,
+              [slug]: {
+                ...(prev[slug] ?? {}),
+                [key]: value,
+              },
+            }))
+          }
+          onSave={() => updateProject.mutate()}
+          savePending={updateProject.isPending}
         />
 
-        <ProjectSummaryStats
-          memberCount={membersQuery.data?.members?.length ?? 0}
-          tokenCount={tokensQuery.data?.tokens?.filter((t) => t.active).length ?? 0}
-          serviceCount={enabledProjectServiceKeys.length}
-          isLoading={projectQuery.isLoading}
+        <ProjectTokensCard
+          newTokenLabel={newTokenLabel}
+          onTokenLabelChange={setNewTokenLabel}
+          onCreateToken={() => createToken.mutate()}
+          createTokenPending={createToken.isPending}
+          plainToken={plainToken}
+          tokens={tokensQuery.data?.tokens ?? []}
+          onRevokeToken={(tokenId) => revokeToken.mutate(tokenId)}
+          revokeTokenPending={revokeToken.isPending}
         />
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-1">
-          <TabsList className="bg-transparent h-auto p-0 gap-8 justify-start">
-            <TabsTrigger 
-              value="overview" 
-              className="px-0 pb-3 pt-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
-            >
-              Overview
-            </TabsTrigger>
-            <TabsTrigger 
-              value="security" 
-              className="px-0 pb-3 pt-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
-            >
-              Security & Tokens
-            </TabsTrigger>
-            {canManageProject && (
-              <TabsTrigger 
-                value="governance" 
-                className="px-0 pb-3 pt-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
-              >
-                Team Governance
-              </TabsTrigger>
-            )}
-          </TabsList>
-        </div>
-
-        <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
-          <div className="grid gap-6 animate-in fade-in slide-in-from-left-4 duration-500">
-            <ProjectProfileCard
-              fields={fields}
-              onFieldChange={(key, value) =>
-                setFieldOverridesBySlug((prev) => ({
-                  ...prev,
-                  [slug]: {
-                    ...(prev[slug] ?? {}),
-                    [key]: value,
-                  },
-                }))
-              }
-              onSave={() => updateProject.mutate()}
-              savePending={updateProject.isPending}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="security" className="mt-0 focus-visible:outline-none">
-          <div className="grid gap-6 animate-in fade-in slide-in-from-left-4 duration-500">
-            <ProjectTokensCard
-              newTokenLabel={newTokenLabel}
-              onTokenLabelChange={setNewTokenLabel}
-              onCreateToken={() => createToken.mutate()}
-              createTokenPending={createToken.isPending}
-              plainToken={plainToken}
-              tokens={tokensQuery.data?.tokens ?? []}
-              onRevokeToken={(tokenId) => revokeToken.mutate(tokenId)}
-              revokeTokenPending={revokeToken.isPending}
-            />
-          </div>
-        </TabsContent>
-
-        {canManageProject && (
-          <TabsContent value="governance" className="mt-0 focus-visible:outline-none">
-            <div className="grid gap-6 animate-in fade-in slide-in-from-left-4 duration-500">
-              <ProjectGovernanceCard
-                isAdmin={isAdmin}
-                handoverEmail={handoverEmail}
-                onHandoverEmailChange={setHandoverEmail}
-                onHandover={() => handoverProject.mutate()}
-                handoverPending={handoverProject.isPending}
-                memberUserId={memberUserId}
-                onMemberUserIdChange={setMemberUserId}
-                onAddMember={() => addMember.mutate()}
-                addMemberPending={addMember.isPending}
-                users={usersQuery.data?.users ?? []}
-                usersLoading={usersQuery.isLoading}
-                newUserEmail={newUserEmail}
-                onNewUserEmailChange={setNewUserEmail}
-                newUserPassword={newUserPassword}
-                onNewUserPasswordChange={setNewUserPassword}
-                onCreateUser={() => createUser.mutate()}
-                createUserPending={createUser.isPending}
-                members={membersQuery.data?.members ?? []}
-                onRemoveMember={(userId) => removeMember.mutate(userId)}
-                removeMemberPending={removeMember.isPending}
-                onRevokeMemberService={(userId, serviceKey) =>
-                  revokeMemberService.mutate({ userId, serviceKey })
-                }
-                revokeMemberServicePending={revokeMemberService.isPending}
-                enabledProjectServiceKeys={enabledProjectServiceKeys}
-                selectedServicesByUser={memberSelectedServicesByUser}
-                onToggleSelectedService={toggleSelectedService}
-                onGrantMemberServices={(userId, serviceKeys) =>
-                  grantMemberServices.mutate({ userId, serviceKeys })
-                }
-                grantMemberServicesPending={grantMemberServices.isPending}
-                services={servicesQuery.data?.services ?? []}
-                onToggleProjectService={(serviceKey, enabled) =>
-                  toggleProjectService.mutate({ serviceKey, enabled })
-                }
-                toggleProjectServicePending={toggleProjectService.isPending}
-              />
-            </div>
-          </TabsContent>
-        )}
-      </Tabs>
+      {canManageProject ? (
+        <ProjectGovernanceCard
+          isAdmin={isAdmin}
+          handoverEmail={handoverEmail}
+          onHandoverEmailChange={setHandoverEmail}
+          onHandover={() => handoverProject.mutate()}
+          handoverPending={handoverProject.isPending}
+          memberUserId={memberUserId}
+          onMemberUserIdChange={setMemberUserId}
+          onAddMember={() => addMember.mutate()}
+          addMemberPending={addMember.isPending}
+          users={usersQuery.data?.users ?? []}
+          usersLoading={usersQuery.isLoading}
+          newUserEmail={newUserEmail}
+          onNewUserEmailChange={setNewUserEmail}
+          newUserPassword={newUserPassword}
+          onNewUserPasswordChange={setNewUserPassword}
+          onCreateUser={() => createUser.mutate()}
+          createUserPending={createUser.isPending}
+          members={membersQuery.data?.members ?? []}
+          onRemoveMember={(userId) => removeMember.mutate(userId)}
+          removeMemberPending={removeMember.isPending}
+          onRevokeMemberFeature={(userId, featureKey) =>
+            revokeMemberFeature.mutate({ userId, featureKey })
+          }
+          revokeMemberFeaturePending={revokeMemberFeature.isPending}
+          enabledProjectFeatureKeys={enabledProjectFeatureKeys}
+          selectedFeaturesByUser={memberSelectedFeaturesByUser}
+          onToggleSelectedFeature={toggleSelectedFeature}
+          onGrantMemberFeatures={(userId, featureKeys) =>
+            grantMemberFeatures.mutate({ userId, featureKeys })
+          }
+          grantMemberFeaturesPending={grantMemberFeatures.isPending}
+          features={featuresQuery.data?.features ?? []}
+          onToggleProjectFeature={(featureKey, enabled) =>
+            toggleProjectFeature.mutate({ featureKey, enabled })
+          }
+          toggleProjectFeaturePending={toggleProjectFeature.isPending}
+        />
+      ) : null}
     </div>
   );
 }

@@ -46,6 +46,7 @@ import { CmsReferenceScreenshotField } from "@/components/cms/cms-reference-scre
 import { LayoutBuilderBlockBranch } from "@/components/cms/layout-builder/block-branch";
 import { LayoutBuilderGroupedToolPalette } from "@/components/cms/layout-builder/grouped-tool-palette";
 import { cn } from "@/lib/shared/utils";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import {
   addChildToContainer,
   buildExportJson,
@@ -80,6 +81,7 @@ import {
 export type { LayoutBuilderProps, SectionBlock, SectionBlockType };
 
 function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
+  const { currentProject } = useCurrentProject();
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnToRaw = searchParams.get("returnTo");
@@ -286,7 +288,11 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
         ref = stripDomain(ref);
       }
       if (pendingReferenceImageFile) {
-        ref = await uploadCmsReferenceImage(pendingReferenceImageFile);
+        const slug = currentProject?.slug;
+        if (!slug) {
+          throw new Error("Project context not identified. Cannot upload reference image.");
+        }
+        ref = await uploadCmsReferenceImage(pendingReferenceImageFile, slug);
       }
 
       if (isEdit && layoutId) {

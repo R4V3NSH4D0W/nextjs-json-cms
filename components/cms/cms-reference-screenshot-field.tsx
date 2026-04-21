@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/shared/utils";
 import { MediaPickerModal } from "@/components/media/media-picker-modal";
 import Image from "next/image";
+import { useCurrentProject } from "../providers/current-project-provider";
 
 function isValidReferenceUrl(raw: string): boolean {
   const t = raw.trim();
@@ -59,6 +60,7 @@ export function CmsReferenceScreenshotField({
   deferredFile?: File | null;
   onDeferredFileChange?: (file: File | null) => void;
 }) {
+  const { currentProject } = useCurrentProject();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
@@ -86,9 +88,14 @@ export function CmsReferenceScreenshotField({
         toast.success("Image selected. It will upload when you save.");
         return;
       }
+      const slug = currentProject?.slug;
+      if (!slug) {
+        toast.error("Project context not found. Please refresh and try again.");
+        return;
+      }
       setUploading(true);
       try {
-        const url = await uploadCmsReferenceImage(file);
+        const url = await uploadCmsReferenceImage(file, slug);
         onChange(url);
         toast.success("Image uploaded");
       } catch (err) {
@@ -97,7 +104,7 @@ export function CmsReferenceScreenshotField({
         setUploading(false);
       }
     },
-    [onChange, onDeferredFileChange, uploadStrategy],
+    [onChange, onDeferredFileChange, uploadStrategy, currentProject?.slug],
   );
 
   const handleUpload = useCallback(
@@ -148,7 +155,9 @@ export function CmsReferenceScreenshotField({
 
   const hasDeferredFile = uploadStrategy === "deferred" && !!deferredFile;
   const hasValue = Boolean(value.trim()) || hasDeferredFile;
-  const previewSrc = hasDeferredFile ? deferredPreviewUrl : absoluteApiUrl(value.trim());
+  const previewSrc = hasDeferredFile 
+    ? deferredPreviewUrl || null 
+    : value.trim() ? absoluteApiUrl(value.trim()) : null;
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
@@ -164,15 +173,16 @@ export function CmsReferenceScreenshotField({
       {hasValue ? (
         <div className="flex gap-3 rounded-md border bg-background p-3">
           <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md border bg-muted">
-            <Image
-              src={previewSrc}
-              alt=""
-              fill
-              className="object-cover object-top"
-              sizes="128px"
-              unoptimized={hasDeferredFile}
-            />
-          
+            {previewSrc && (
+              <Image
+                src={previewSrc}
+                alt=""
+                fill
+                className="object-cover object-top"
+                sizes="128px"
+                unoptimized={hasDeferredFile}
+              />
+            )}
           </div>
           <div className="min-w-0 flex-1 space-y-2">
             <p className="break-all font-mono text-[11px] leading-snug text-muted-foreground">
@@ -301,7 +311,7 @@ export function CmsReferenceScreenshotPreview({
   imageOnly?: boolean;
 }) {
   const trimmed = url.trim();
-  const src = trimmed ? absoluteApiUrl(trimmed) : "";
+  const src = trimmed ? absoluteApiUrl(trimmed) : null;
 
   return (
     <div
