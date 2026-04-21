@@ -238,3 +238,21 @@ Result:
 - Admin users can create/manage projects and tokens.
 - Non-admin users see only accessible projects and role-appropriate UI.
 - CMS/media/public API requests consistently target the selected project slug.
+
+### 5.6 Project Settings UX Refactor (Component-Based)
+
+Date: 2026-04-20
+
+This pass redesigned project settings to reduce confusion and split the page into reusable dashboard components.
+
+| File | Change |
+|---|---|
+| `components/dashboard/projects/project-settings-sections.tsx` | New component module with reusable sections: `ProjectSettingsHero`, `ProjectProfileCard`, `ProjectTokensCard`, `ProjectGovernanceCard` |
+| `app/dashboard/projects/[slug]/page.tsx` | Refactored page to orchestration-only logic with section components, clearer visual hierarchy, and tabs-based governance area (Members / Features) |
+
+UX improvements delivered:
+- Clear top-level project context panel with role and management status badges.
+- Profile and API token operations grouped into distinct purpose-driven cards.
+- Permissions area moved to tabbed navigation to avoid overloaded single-column forms.
+- Members flow now highlights role, grants, and actions in a consistent card pattern.
+- Feature switches presented in a dedicated tab with concise descriptions and stateful controls.

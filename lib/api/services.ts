@@ -241,12 +241,6 @@ export const authApi = {
   login: (email: string, password: string) =>
     api.post<Ok<{ user: SessionUser }>>('/api/auth/login', { email, password }),
 
-  register: (email: string, password: string) =>
-    api.post<Ok<{ user: SessionUser }>>('/api/auth/register', {
-      email,
-      password,
-    }),
-
   logout: () => api.post<Ok<Record<never, never>>>('/api/auth/logout', {}),
 
   me: () =>

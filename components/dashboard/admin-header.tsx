@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, PanelLeft } from "lucide-react";
+import { LogOut, PanelLeft, ShieldCheck } from "lucide-react";
 
 import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
@@ -18,7 +18,13 @@ import {
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-export function AdminHeader({ userEmail }: { userEmail: string }) {
+export function AdminHeader({
+  userEmail,
+  mode = "dashboard",
+}: {
+  userEmail: string;
+  mode?: "admin" | "dashboard";
+}) {
   const { open } = useSidebar();
   const { currentProject, projects } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
@@ -33,86 +39,99 @@ export function AdminHeader({ userEmail }: { userEmail: string }) {
         </SidebarTrigger>
       )}
       <div className="flex flex-1 items-center justify-between gap-4">
-        <p className="text-sm font-medium text-muted-foreground">
-          {currentProject ? `Project: ${currentProject.name}` : "Dashboard"}
-        </p>
         <div className="flex items-center gap-2">
-          {projects.length > 0 ? (
+          <p className="text-sm font-medium text-muted-foreground">
+            {mode === "admin" ? "Platform Administration" : (currentProject ? `Project: ${currentProject.name}` : "Dashboard")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {mode === "dashboard" && projects.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden md:inline-flex"
+                  className="hidden md:inline-flex gap-2 border-border/60 hover:bg-muted font-medium"
                 >
-                  {currentProject?.name ?? "Choose project"}
+                  {currentProject?.name ?? "Select Project"}
+                  <PanelLeft className="size-3.5 rotate-[-90deg] opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuLabel>Switch project</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-border/50">
+                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest pb-2 px-2">Switch Workspace</DropdownMenuLabel>
                 {projects.map((project) => (
-                  <DropdownMenuItem key={project.id} asChild>
+                  <DropdownMenuItem key={project.id} asChild className="rounded-md focus:bg-primary/5 focus:text-primary transition-colors">
                     <Link
                       href={`/dashboard/projects/select?slug=${encodeURIComponent(project.slug)}&redirect=/dashboard`}
+                      className="flex items-center justify-between w-full"
                     >
-                      {project.name}
+                      <span>{project.name}</span>
+                      {currentProject?.id === project.id && (
+                        <div className="size-1.5 rounded-full bg-primary" />
+                      )}
                     </Link>
                   </DropdownMenuItem>
                 ))}
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild className="rounded-md focus:bg-primary/5 focus:text-primary transition-colors">
+                      <Link href="/admin/projects" className="font-bold text-xs uppercase tracking-tight">
+                        Manage All Projects
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/">Home</Link>
-          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-9 gap-2 rounded-sm px-2"
+                className="relative h-9 gap-2 rounded-sm px-2 hover:bg-muted/50 transition-colors"
               >
-                <Avatar className="size-8 rounded-sm border border-border">
-                  <AvatarFallback className="rounded-sm bg-muted text-xs font-semibold text-foreground">
+                <Avatar className="size-8 rounded-sm border border-border/50">
+                  <AvatarFallback className="rounded-sm bg-primary/10 text-xs font-bold text-primary uppercase">
                     {initial}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden max-w-[140px] truncate text-sm font-medium md:inline">
-                  {userEmail}
-                </span>
-                <span className="hidden rounded bg-muted px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground md:inline">
-                  {isAdmin ? "Admin" : "Member"}
-                </span>
+                <div className="hidden flex-col items-start gap-0.5 text-left md:flex">
+                  <span className="max-w-[140px] truncate text-xs font-semibold leading-none">
+                    {userEmail}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
+                    {isAdmin ? "Super Admin" : "Project Member"}
+                  </span>
+                </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
+            <DropdownMenuContent align="end" className="w-60 p-2 shadow-xl border-border/50">
+              <DropdownMenuLabel className="font-normal p-2">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">
-                    Signed in
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest leading-none">
+                    Session Profile
                   </span>
-                  <span className="truncate text-sm font-medium">
+                  <span className="truncate text-sm font-semibold pt-1">
                     {userEmail}
                   </span>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/" className="cursor-pointer">
-                  Public home
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
+              <DropdownMenuSeparator className="my-2" />
+              {isAdmin && mode === "dashboard" && (
+                <DropdownMenuItem asChild className="rounded-md cursor-pointer">
+                  <Link href="/admin" className="flex items-center gap-2">
+                    <ShieldCheck className="size-4" />
+                    Platform Admin
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem asChild className="rounded-md cursor-pointer">
                 <form action={logoutAction} className="w-full">
                   <button
                     type="submit"
-                    className="flex w-full cursor-pointer items-center gap-2 text-left"
+                    className="flex w-full items-center gap-2 text-left text-destructive"
                   >
                     <LogOut className="size-4" />
                     Sign out

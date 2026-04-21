@@ -12,11 +12,19 @@ import {
   Megaphone,
   Images,
   FolderKanban,
+  ShieldCheck,
+  Users,
+  Settings,
+  type LucideIcon,
 } from "lucide-react";
 
-import { useCurrentProject } from "@/components/providers/current-project-provider";
+import { 
+  useCurrentProject 
+} from "@/components/providers/current-project-provider";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { cn } from "@/lib/shared/utils";
+import { Button } from "@/components/ui/button";
+import { type FeatureKey } from "@/lib/projects/api";
 import {
   Sidebar,
   SidebarContent,
@@ -30,40 +38,84 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const mainNav = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/media", label: "Media", icon: Images },
-] as const;
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  feature?: FeatureKey;
+};
 
-const cmsNav = [
-  { href: "/dashboard/cms", label: "Overview", icon: LayoutGrid },
-  { href: "/dashboard/cms/pages", label: "Pages", icon: FileText },
-  { href: "/dashboard/cms/layouts", label: "Layouts", icon: LayoutTemplate },
-  { href: "/dashboard/cms/navigation", label: "Navigation", icon: Menu },
-  { href: "/dashboard/cms/footer", label: "Footer", icon: PanelBottom },
+const platformNav: NavItem[] = [
+  { href: "/admin", label: "Platform Overview", icon: LayoutDashboard },
+  { href: "/admin/projects", label: "All Projects", icon: FolderKanban },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/audit", label: "Audit Logs", icon: ShieldCheck },
+];
+
+const projectMainNav: NavItem[] = [
+  { href: "/dashboard", label: "Project Overview", icon: LayoutDashboard },
+  {
+    href: "/dashboard/media",
+    label: "Media",
+    icon: Images,
+    feature: "cms.media.read",
+  },
+];
+
+const cmsNav: NavItem[] = [
+  {
+    href: "/dashboard/cms/pages",
+    label: "Pages",
+    icon: FileText,
+    feature: "cms.pages.read",
+  },
+  {
+    href: "/dashboard/cms/layouts",
+    label: "Layouts",
+    icon: LayoutTemplate,
+    feature: "cms.layouts.read",
+  },
+  {
+    href: "/dashboard/cms/navigation",
+    label: "Navigation",
+    icon: Menu,
+    feature: "cms.navigation.read",
+  },
+  {
+    href: "/dashboard/cms/footer",
+    label: "Footer",
+    icon: PanelBottom,
+    feature: "cms.footer.read",
+  },
   {
     href: "/dashboard/cms/announcements",
     label: "Announcements",
     icon: Megaphone,
+    feature: "cms.announcements.read",
   },
-] as const;
+  {
+    href: "/dashboard/settings",
+    label: "Project Settings",
+    icon: Settings,
+  },
+];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  if (href === "/dashboard/cms") return pathname === "/dashboard/cms";
-  if (href === "/dashboard/media")
-    return (
-      pathname === "/dashboard/media" ||
-      pathname.startsWith("/dashboard/media/")
-    );
+  if (href === "/dashboard" || href === "/admin") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({ mode = "dashboard" }: { mode?: "admin" | "dashboard" }) {
   const pathname = usePathname();
-  const { currentProject } = useCurrentProject();
+  const { currentProject, hasService } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
+
+  const visibleProjectMainNav = projectMainNav.filter(
+    (item) => !item.feature || hasService(item.feature),
+  );
+  const visibleCmsNav = cmsNav.filter(
+    (item) => !item.feature || hasService(item.feature),
+  );
 
   return (
     <Sidebar
@@ -76,81 +128,123 @@ export function AdminSidebar() {
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border bg-primary text-sm font-bold text-primary-foreground"
             aria-hidden
           >
-            C
+            {mode === "admin" ? "A" : "D"}
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              Projects CMS
+              {mode === "admin" ? "Platform Admin" : "Project Dashboard"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {currentProject?.name ?? (isAdmin ? "Admin" : "Member")}
+              {mode === "admin" ? "System Core" : (currentProject?.name ?? "No Project")}
             </p>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="scrollbar-hide gap-0 p-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-            Main
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNav.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(pathname, item.href);
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      className={cn(
-                        active &&
-                          "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <Icon className="size-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {mode === "admin" ? (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {platformNav.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        className={cn(
+                          active &&
+                            "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
+                        )}
+                      >
+                        <Link href={item.href}>
+                          <Icon className="size-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
+                Main
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleProjectMainNav.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(pathname, item.href);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className={cn(
+                            active &&
+                              "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
+                          )}
+                        >
+                          <Link href={item.href}>
+                            <Icon className="size-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-            Project Content
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {cmsNav.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(pathname, item.href);
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      className={cn(
-                        active &&
-                          "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <Icon className="size-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroup className="mt-4">
+              <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
+                Content & Settings
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleCmsNav.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(pathname, item.href);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className={cn(
+                            active &&
+                              "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
+                          )}
+                        >
+                          <Link href={item.href}>
+                            <Icon className="size-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
+      {mode === "dashboard" && isAdmin && (
+        <div className="mt-auto p-4 border-t border-sidebar-border group-data-[collapsible=icon]:hidden">
+          <Button asChild variant="outline" size="sm" className="w-full text-[10px] uppercase tracking-widest font-bold h-8">
+            <Link href="/admin">Return to admin</Link>
+          </Button>
+        </div>
+      )}
       <SidebarRail />
     </Sidebar>
   );
