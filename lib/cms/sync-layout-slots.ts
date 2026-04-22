@@ -84,8 +84,13 @@ export async function syncLayoutSlotsToPage(params: {
   let ti = 0;
   for (const b of sorted) {
     if (b.type === "text_block") {
+      if (b.isActive === false) {
+        // Preserve removed blocks in-place so reorder can still include every id.
+        finalOrder.push(b.id);
+        continue;
+      }
       const nextId = textIds[ti++];
-      if (nextId) finalOrder.push(nextId);
+      finalOrder.push(nextId ?? b.id);
     } else {
       finalOrder.push(b.id);
     }

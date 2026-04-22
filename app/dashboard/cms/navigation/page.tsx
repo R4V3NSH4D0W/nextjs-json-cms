@@ -52,16 +52,19 @@ function NavigationLayoutSectionsTab({
               ...d,
               sections: next.length > 0 ? next : undefined,
             }
-          : d
+          : d,
       );
     },
-    [setDraft]
+    [setDraft],
   );
 
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[200px] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          style={{ minHeight: 200 }}
+        >
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading layout editor…
         </div>
@@ -102,7 +105,7 @@ export default function CmsNavigationPage() {
         if (cached?.layout) return cached.layout;
         const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
-      }
+      },
     );
     if (err) {
       toast.error(err);
@@ -142,7 +145,9 @@ export default function CmsNavigationPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={publicCmsNavigationApiPath(currentProject?.slug ?? "main")}
+            apiPath={publicCmsNavigationApiPath()}
+            tenantSlug={currentProject?.slug}
+            tenantDomain={currentProject?.primaryDomain}
             titleHint="Public JSON: success + layout configValues keys (flat), not nested sections."
           />
         </div>

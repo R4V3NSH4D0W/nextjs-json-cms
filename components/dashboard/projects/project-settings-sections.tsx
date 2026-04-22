@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,17 +34,18 @@ import {
   Users,
   Key,
   Layers,
-  Settings2,
   ChevronLeft,
   Globe,
-  FileText,
   Plus,
-  Activity,
   Trash2,
-  Mail,
   Lock,
   ExternalLink,
-  Info
+  Info,
+  RotateCcw,
+  FileText,
+  ImageIcon,
+  Timer,
+  Trash2 as DeleteIcon,
 } from "lucide-react";
 import { cn } from "@/lib/shared/utils";
 
@@ -61,20 +63,44 @@ export function ProjectSummaryStats(props: {
   isLoading?: boolean;
 }) {
   const stats = [
-    { label: "Team Members", value: props.memberCount, icon: Users, color: "text-blue-500" },
-    { label: "Active Tokens", value: props.tokenCount, icon: Key, color: "text-amber-500" },
-    { label: "Platform Services", value: props.serviceCount, icon: Layers, color: "text-primary" },
-    { label: "Security Status", value: "Verified", icon: ShieldCheck, color: "text-emerald-500" },
+    {
+      label: "Team Members",
+      value: props.memberCount,
+      icon: Users,
+      color: "text-blue-500",
+    },
+    {
+      label: "Active Tokens",
+      value: props.tokenCount,
+      icon: Key,
+      color: "text-amber-500",
+    },
+    {
+      label: "Platform Services",
+      value: props.serviceCount,
+      icon: Layers,
+      color: "text-primary",
+    },
+    {
+      label: "Security Status",
+      value: "Verified",
+      icon: ShieldCheck,
+      color: "text-emerald-500",
+    },
   ];
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat, i) => (
-        <Card key={i} className="border-border/50 bg-card/40 backdrop-blur-sm transition-all hover:border-primary/20">
+        <Card key={i}>
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</p>
-              <p className="text-xl font-bold tabular-nums">{props.isLoading ? "..." : stat.value}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {stat.label}
+              </p>
+              <p className="text-xl font-bold tabular-nums">
+                {props.isLoading ? "..." : stat.value}
+              </p>
             </div>
             <div className={cn("p-2 rounded-lg bg-background/50", stat.color)}>
               <stat.icon className="size-4" />
@@ -102,48 +128,46 @@ export function ProjectSettingsHero(props: {
         : "Viewer";
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 mb-1">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Link
           href={props.isAdmin ? "/admin/projects" : "/dashboard"}
-          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+          className="inline-flex items-center gap-1 font-medium hover:text-foreground"
         >
           <ChevronLeft className="size-3" /> All Projects
         </Link>
-        <div className="size-1 rounded-full bg-border" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Node Configuration</p>
+        <span>•</span>
+        <span>Project Settings</span>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground/90 leading-none">
-              {props.projectName}
-            </h1>
-            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[10px]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">{props.projectName}</h1>
+            <Badge variant="outline" className="font-mono text-xs">
               {props.projectSlug}
             </Badge>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-emerald-500" />
-              <span className="font-medium text-foreground/70">{roleLabel}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Activity className="size-3.5 text-primary" />
-              <span>{props.canManageProject ? "Management Access granted" : "Restricted visibility"}</span>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="secondary" className="h-6">
+              <ShieldCheck className="mr-1 size-3.5" />
+              {roleLabel}
+            </Badge>
+            <span>
+              {props.canManageProject
+                ? "Can manage project"
+                : "Read-only access"}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" asChild className="h-9 gap-2 font-semibold">
-            <Link href={`/dashboard/projects/select?slug=${encodeURIComponent(props.projectSlug)}&redirect=/dashboard`}>
-              Launch Console <ExternalLink className="size-3.5" />
+        <div>
+          <Button variant="outline" size="sm" asChild className="h-9 gap-2">
+            <Link
+              href={`/dashboard/projects/select?slug=${encodeURIComponent(props.projectSlug)}&redirect=/dashboard`}
+            >
+              Open Project Dashboard <ExternalLink className="size-3.5" />
             </Link>
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 size-9 p-0 text-muted-foreground">
-            <Settings2 className="size-4" />
           </Button>
         </div>
       </div>
@@ -163,80 +187,86 @@ export function ProjectProfileCard(props: {
     .filter(Boolean);
 
   return (
-    <Card className="border-border/50 bg-card/40 backdrop-blur-sm overflow-hidden border-t-2 border-t-primary/40">
-      <CardHeader className="border-b border-border/50 bg-muted/20 pb-8 pt-10 px-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none" />
-        <div className="flex items-center gap-2 text-primary mb-3">
-          <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
-            <Globe className="size-4" />
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Deployment Identity</span>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Globe className="size-4" />
+          <span className="text-xs uppercase tracking-wide">
+            Project Profile
+          </span>
         </div>
-        <CardTitle className="text-3xl font-extrabold tracking-tight">Profile & Network Context</CardTitle>
-        <CardDescription className="text-sm max-w-xl leading-relaxed">
-          Manage the outward-facing identity of this tenant node and configure CORS origin policies for secure API consumption.
+        <CardTitle>Basic Information</CardTitle>
+        <CardDescription>
+          Update project details and allowed origins for API access.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-10 pt-10 px-8 pb-10">
-        <div className="grid md:grid-cols-2 gap-10">
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Instance Designation</label>
+      <CardContent className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Project name
+              </label>
               <Input
-                placeholder="Unique project identifier..."
+                placeholder="Project name"
                 value={props.fields.name}
                 onChange={(e) => props.onFieldChange("name", e.target.value)}
-                className="bg-background/40 border-border/60 h-11 focus:ring-primary/20 transition-all"
+                className="h-10"
               />
-              <p className="text-[10px] text-muted-foreground/60 ml-1">Used for identification across the platform and in system emails.</p>
+              <p className="text-xs text-muted-foreground">
+                Shown in dashboard, logs, and notifications.
+              </p>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Strategic Description</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Description
+              </label>
               <Textarea
-                placeholder="Mission statement or context for this project instance..."
+                placeholder="What this project is for"
                 value={props.fields.description}
-                onChange={(e) => props.onFieldChange("description", e.target.value)}
-                className="bg-background/40 border-border/60 min-h-[140px] resize-none focus:ring-primary/20 transition-all leading-relaxed"
+                onChange={(e) =>
+                  props.onFieldChange("description", e.target.value)
+                }
+                className="min-h-35 resize-none"
               />
             </div>
           </div>
 
-          <div className="space-y-8">
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1 font-mono">Gateway: Primary Domain</label>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Primary domain
+              </label>
               <div className="relative">
-                <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+                <Globe className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="https://production-gateway.com"
+                  placeholder="https://example.com"
                   value={props.fields.primaryDomain}
-                  onChange={(e) => props.onFieldChange("primaryDomain", e.target.value)}
-                  className="bg-background/40 border-border/60 h-11 pl-11 focus:ring-primary/20 transition-all font-mono"
+                  onChange={(e) =>
+                    props.onFieldChange("primaryDomain", e.target.value)
+                  }
+                  className="h-10 pl-10"
                 />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between ml-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <ShieldCheck className="size-4 text-emerald-500" /> Authorized Origins
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <ShieldCheck className="size-4" /> Allowed origins
                 </label>
-                <div className="flex items-center gap-1.5 p-1 px-2 rounded-full bg-muted/30 border border-border/40">
-                  <Activity className="size-3 text-muted-foreground/40" />
-                  <span className="text-[9px] text-muted-foreground/60 font-mono font-bold leading-none uppercase">CORS Policy Active</span>
-                </div>
               </div>
 
               {origins.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-4 rounded-xl border border-border/40 bg-muted/10 min-h-12 w-full transition-all">
+                <div className="flex min-h-12 flex-wrap gap-2 rounded-md border p-3">
                   {origins.map((origin, idx) => (
                     <Badge
                       key={idx}
                       variant="outline"
-                      className="bg-background/60 text-[10px] font-mono px-2 py-1 border-primary/20 text-primary/80 flex items-center gap-1.5 hover:border-primary/40 hover:bg-background transition-all group"
+                      className="font-mono text-xs"
                     >
-                      <div className="size-1 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform" />
                       {origin}
                     </Badge>
                   ))}
@@ -250,21 +280,25 @@ export function ProjectProfileCard(props: {
                   props.onFieldChange("allowedOrigins", e.target.value)
                 }
                 rows={4}
-                className="bg-background/40 border-border/60 font-mono text-xs focus:ring-primary/20 transition-all p-4"
+                className="p-3 font-mono text-xs"
               />
-              <div className="flex items-start gap-2 px-1">
-                <Info className="size-3 text-muted-foreground/40 mt-0.5" />
-                <p className="text-[10px] text-muted-foreground/60 leading-normal italic">
-                  List authorized domains allowed to consume the project API. <span className="text-foreground font-semibold">Wildcards are not supported for security reasons.</span>
+              <div className="flex items-start gap-2">
+                <Info className="mt-0.5 size-3.5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Enter one origin per line. Wildcards are not supported.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end pt-6 border-t border-border/30">
-          <Button onClick={props.onSave} disabled={props.savePending} className="font-bold h-12 px-10 text-base transition-all active:scale-95">
-            {props.savePending ? "Synchronizing Platform State..." : "Deploy Profile Configuration"}
+        <div className="flex justify-end border-t pt-4">
+          <Button
+            onClick={props.onSave}
+            disabled={props.savePending}
+            className="h-10 px-6"
+          >
+            {props.savePending ? "Saving..." : "Save changes"}
           </Button>
         </div>
       </CardContent>
@@ -283,72 +317,84 @@ export function ProjectTokensCard(props: {
   revokeTokenPending: boolean;
 }) {
   return (
-    <Card className="border-border/50 bg-card/40 backdrop-blur-sm flex flex-col h-full overflow-hidden">
-      <CardHeader className="border-b border-border/50 bg-muted/20">
-        <div className="flex items-center gap-2 text-amber-500 mb-1">
+    <Card className="flex h-full flex-col">
+      <CardHeader>
+        <div className="mb-1 flex items-center gap-2 text-muted-foreground">
           <Key className="size-4" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Authentication</span>
+          <span className="text-xs uppercase tracking-wide">API Tokens</span>
         </div>
-        <CardTitle className="text-xl">API Infrastructure</CardTitle>
+        <CardTitle>Access Tokens</CardTitle>
         <CardDescription>
-          Issue scoped credentials for project APIs.
+          Create and revoke tokens used by external clients.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 pt-6 flex-1 flex flex-col">
+
+      <CardContent className="flex flex-1 flex-col space-y-5">
         <div className="flex gap-2">
           <Input
-            placeholder="Identity label (e.g. Production Frontend)"
+            placeholder="Token label (for example: Production Frontend)"
             value={props.newTokenLabel}
             onChange={(e) => props.onTokenLabelChange(e.target.value)}
-            className="bg-background/50 border-border/60 h-10"
+            className="h-10"
           />
           <Button
             onClick={props.onCreateToken}
             disabled={!props.newTokenLabel.trim() || props.createTokenPending}
-            className="h-10 px-6 font-bold"
+            className="h-10 px-4"
           >
             <Plus className="size-4" />
           </Button>
         </div>
 
         {props.plainToken ? (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs relative group animate-in slide-in-from-top-2">
-            <div className="flex items-center gap-2 text-amber-500 font-bold uppercase tracking-widest text-[9px] mb-2">
-              <Lock className="size-3" /> Secure Exposure
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs dark:border-amber-700/40 dark:bg-amber-950/20">
+            <div className="mb-2 flex items-center gap-2 font-medium text-amber-700 dark:text-amber-300">
+              <Lock className="size-3.5" /> Copy token now
             </div>
-            <p className="text-muted-foreground leading-relaxed mb-3">
-              Copy this secret now. Infrastructure security policy prevents us from displaying it again.
+            <p className="mb-2 text-muted-foreground">
+              This token is shown once and cannot be viewed again.
             </p>
-            <div className="break-all font-mono text-[10px] bg-background/80 p-3 rounded-lg border border-amber-500/20 select-all">
+            <div className="select-all break-all rounded border bg-background p-2 font-mono text-[11px]">
               {props.plainToken}
             </div>
           </div>
         ) : null}
 
-        <div className="space-y-3 flex-1 overflow-y-auto min-h-[200px] max-h-[400px] pr-1">
+        <div className="min-h-50 max-h-100 flex-1 space-y-3 overflow-y-auto pr-1">
           {props.tokens.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center py-8 opacity-50">
-              <ShieldCheck className="size-8 mb-2 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground italic">
-                Secure credentials library is currently empty.
-              </p>
+            <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed py-8 text-center">
+              <ShieldCheck className="mb-2 size-7 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">No tokens yet.</p>
             </div>
           ) : null}
           {props.tokens.map((token) => (
-            <div key={token.id} className={cn(
-              "rounded-xl border p-4 transition-all",
-              token.active ? "border-border/60 bg-background/40" : "border-border/30 bg-muted/40 grayscale"
-            )}>
-              <div className="flex items-center justify-between gap-3">
+            <div
+              key={token.id}
+              className={cn(
+                "rounded-md border p-3",
+                token.active ? "bg-card" : "bg-muted/30",
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
                 <div className="space-y-1">
-                  <p className={cn("text-xs font-bold", token.active ? "text-foreground" : "text-muted-foreground")}>
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      token.active
+                        ? "text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
                     {token.label}
                   </p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={token.active ? "outline" : "secondary"} className="h-4 px-1 text-[8px] font-mono leading-none">
+                    <Badge
+                      variant={token.active ? "outline" : "secondary"}
+                      className="h-5 px-2 text-[10px]"
+                    >
                       {token.active ? "Active" : "Archived"}
                     </Badge>
-                    <span className="text-[9px] text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(token.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -359,8 +405,8 @@ export function ProjectTokensCard(props: {
                   onClick={() => props.onRevokeToken(token.id)}
                   disabled={!token.active || props.revokeTokenPending}
                   className={cn(
-                    "h-8 h-8 px-3 text-[10px] font-bold uppercase tracking-wider",
-                    token.active ? "text-destructive hover:bg-destructive/10" : "text-muted-foreground/40"
+                    "h-8 px-3",
+                    token.active ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
                   {token.active ? "Revoke" : "Revoked"}
@@ -407,34 +453,34 @@ export function ProjectGovernanceCard(props: {
   toggleProjectServicePending: boolean;
 }) {
   return (
-    <Card className="border-border/50 bg-card/40 backdrop-blur-sm overflow-hidden">
-      <CardHeader className="border-b border-border/50 bg-muted/20">
-        <div className="flex items-center gap-2 text-blue-500 mb-1">
+    <Card>
+      <CardHeader>
+        <div className="mb-1 flex items-center gap-2 text-muted-foreground">
           <Users className="size-4" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Governance</span>
+          <span className="text-sm">Governance</span>
         </div>
-        <CardTitle className="text-xl">Team and Governance</CardTitle>
+        <CardTitle>Team and Access</CardTitle>
         <CardDescription>
-          Manage project ownership, collaborators, and provisioned platform services.
+          Manage members and platform service access.
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-6">
-        <Tabs defaultValue="members" className="space-y-6">
-          <TabsList className="bg-muted/50 p-1 border border-border/50 h-10 w-full sm:w-auto grid grid-cols-2 sm:flex">
-            <TabsTrigger value="members" className="text-xs font-bold px-6 data-[state=active]:border-border/50">Members</TabsTrigger>
-            <TabsTrigger value="services" className="text-xs font-bold px-6 data-[state=active]:shadow-sm">Platform Services</TabsTrigger>
+      <CardContent className="space-y-6">
+        <Tabs defaultValue="members" className="space-y-4">
+          <TabsList className="grid h-10 w-full grid-cols-2 sm:w-auto">
+            <TabsTrigger value="members">Members</TabsTrigger>
+            <TabsTrigger value="services">Project services</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="members" className="space-y-6 focus-visible:outline-none">
+          <TabsContent value="members" className="space-y-6">
             {props.isAdmin ? (
-              <div className="grid gap-6 rounded-xl border border-border/60 bg-muted/10 p-5 md:grid-cols-2">
+              <div className="grid gap-6 rounded-md border p-4 md:grid-cols-2">
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <p className="text-sm font-bold flex items-center gap-2">
-                      <ShieldCheck className="size-4 text-primary" /> Management Handover
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <ShieldCheck className="size-4" /> Handover manager
                     </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Promote a user to manage the overall project and grant full capability sets.
+                    <p className="text-xs text-muted-foreground">
+                      Transfer manager role by email.
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -444,35 +490,37 @@ export function ProjectGovernanceCard(props: {
                       onChange={(e) =>
                         props.onHandoverEmailChange(e.target.value)
                       }
-                      className="bg-background/50 border-border/60 h-10"
+                      className="h-10"
                     />
                     <Button
                       onClick={props.onHandover}
                       disabled={
                         !props.handoverEmail.trim() || props.handoverPending
                       }
-                      className="h-10 font-bold px-6"
+                      className="h-10"
                     >
-                      Swap
+                      Handover
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-4 md:border-l md:border-border/50 md:pl-6 pt-6 md:pt-0">
+                <div className="space-y-4 border-t pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
                   <div className="space-y-1">
-                    <p className="text-sm font-bold flex items-center gap-2">
-                      <Plus className="size-4 text-blue-500" /> Direct Provisioning
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <Plus className="size-4" /> Create user
                     </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Create new identity accounts directly for project assignment.
+                    <p className="text-xs text-muted-foreground">
+                      Create a user and then assign them to this project.
                     </p>
                   </div>
                   <div className="grid gap-3">
                     <Input
                       placeholder="new.user@example.com"
                       value={props.newUserEmail}
-                      onChange={(e) => props.onNewUserEmailChange(e.target.value)}
-                      className="bg-background/50 border-border/60 h-9"
+                      onChange={(e) =>
+                        props.onNewUserEmailChange(e.target.value)
+                      }
+                      className="h-9"
                     />
                     <Input
                       placeholder="Security password (min 8 chars)"
@@ -481,7 +529,7 @@ export function ProjectGovernanceCard(props: {
                       onChange={(e) =>
                         props.onNewUserPasswordChange(e.target.value)
                       }
-                      className="bg-background/50 border-border/60 h-9"
+                      className="h-9"
                     />
                     <Button
                       size="sm"
@@ -491,9 +539,9 @@ export function ProjectGovernanceCard(props: {
                         props.newUserPassword.length < 8 ||
                         props.createUserPending
                       }
-                      className="font-bold w-full h-9"
+                      className="h-9"
                     >
-                      Generate Account
+                      Create user
                     </Button>
                   </div>
                 </div>
@@ -501,7 +549,7 @@ export function ProjectGovernanceCard(props: {
             ) : null}
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Member Library</label>
+              <label className="text-sm font-medium">Add existing user</label>
               <div className="flex gap-3">
                 <Select
                   value={props.memberUserId}
@@ -514,7 +562,7 @@ export function ProjectGovernanceCard(props: {
                           ? "Synchronizing Directory..."
                           : props.users.length === 0
                             ? "No users available"
-                            : "Select identity to add"
+                            : "Select a user"
                       }
                     />
                   </SelectTrigger>
@@ -534,20 +582,18 @@ export function ProjectGovernanceCard(props: {
                 <Button
                   onClick={props.onAddMember}
                   disabled={!props.memberUserId || props.addMemberPending}
-                  className="h-11 px-8 font-bold"
+                  className="h-11"
                 >
-                  Assign Identity
+                  Add member
                 </Button>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {props.members.length === 0 ? (
-                <div className="col-span-full py-12 text-center rounded-xl border border-dashed border-border flex flex-col items-center justify-center opacity-40">
+                <div className="col-span-full rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
                   <Users className="size-8 mb-2" />
-                  <p className="text-xs italic">
-                    No identities have been assigned to this terminal yet.
-                  </p>
+                  <p>No members assigned yet.</p>
                 </div>
               ) : null}
               {props.members.map((member) => {
@@ -561,20 +607,23 @@ export function ProjectGovernanceCard(props: {
                   missingEnabledServiceKeys.includes(serviceKey),
                 );
                 return (
-                  <Card
-                    key={member.user.id}
-                    className="border-border/50 bg-background/30 transition-all hover:border-primary/20"
-                  >
+                  <Card key={member.user.id} className="border">
                     <CardHeader className="p-4 pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-1">
-                          <p className="font-bold text-sm truncate pr-4">{member.user.email}</p>
+                          <p className="truncate pr-4 text-sm font-medium">
+                            {member.user.email}
+                          </p>
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="h-4 px-1 text-[8px] font-bold uppercase">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] uppercase"
+                            >
                               {member.role}
                             </Badge>
-                            <span className="text-[9px] text-muted-foreground opacity-60">
-                              Joined {new Date(member.createdAt).toLocaleDateString()}
+                            <span className="text-xs text-muted-foreground">
+                              Joined{" "}
+                              {new Date(member.createdAt).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
@@ -583,7 +632,7 @@ export function ProjectGovernanceCard(props: {
                           variant="ghost"
                           onClick={() => props.onRemoveMember(member.user.id)}
                           disabled={props.removeMemberPending}
-                          className="size-7 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                          className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="size-3.5" />
                         </Button>
@@ -592,14 +641,14 @@ export function ProjectGovernanceCard(props: {
 
                     <CardContent className="p-4 pt-2 space-y-4">
                       <div className="space-y-2">
-                        <p className="text-[9px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                          Provisioned Services <ChevronLeft className="size-2 -rotate-90" />
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Provisioned services
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {member.features.filter((f) =>
                             (SERVICE_KEYS as readonly string[]).includes(f),
                           ).length === 0 ? (
-                            <span className="text-[10px] text-muted-foreground italic">
+                            <span className="text-xs text-muted-foreground">
                               No services provisioned
                             </span>
                           ) : (
@@ -611,7 +660,7 @@ export function ProjectGovernanceCard(props: {
                               <Badge
                                 key={serviceKey}
                                 variant="outline"
-                                className="bg-primary/5 text-primary border-primary/20 text-[9px] font-mono h-5 py-0 px-1.5 flex items-center gap-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 transition-colors"
+                                className="flex h-5 cursor-pointer items-center gap-1 px-1.5 font-mono text-[10px]"
                                 onClick={() =>
                                   props.onRevokeMemberService(
                                     member.user.id,
@@ -619,36 +668,42 @@ export function ProjectGovernanceCard(props: {
                                   )
                                 }
                               >
-                                {serviceKey} <Trash2 className="size-2 text-current" />
+                                {serviceKey}{" "}
+                                <Trash2 className="size-2 text-current" />
                               </Badge>
                             ))
                           )}
                         </div>
                       </div>
 
-                      <div className="space-y-3 pt-2 border-t border-border/20">
-                        <p className="text-[9px] font-bold uppercase text-muted-foreground">
-                          Provisionable Services
+                      <div className="space-y-3 border-t pt-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Available to grant
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {props.enabledProjectServiceKeys.length === 0 ? (
-                            <p className="text-[10px] text-muted-foreground italic">
+                            <p className="text-xs text-muted-foreground">
                               Enable services in the catalog first.
                             </p>
                           ) : missingEnabledServiceKeys.length === 0 ? (
-                            <p className="text-[10px] text-emerald-600 font-medium">
+                            <p className="text-xs text-emerald-600">
                               All available services provisioned.
                             </p>
                           ) : (
                             missingEnabledServiceKeys.map((serviceKey) => (
                               <button
                                 key={serviceKey}
-                                onClick={() => props.onToggleSelectedService(member.user.id, serviceKey)}
+                                onClick={() =>
+                                  props.onToggleSelectedService(
+                                    member.user.id,
+                                    serviceKey,
+                                  )
+                                }
                                 className={cn(
-                                  "px-2 py-0.5 rounded border text-[9px] font-mono transition-all",
+                                  "rounded border px-2 py-0.5 font-mono text-[10px]",
                                   selected.includes(serviceKey)
-                                    ? "bg-primary border-primary text-primary-foreground shadow-sm scale-105"
-                                    : "bg-background/20 border-border/50 text-muted-foreground hover:border-border"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border/60 bg-background text-muted-foreground",
                                 )}
                               >
                                 {serviceKey}
@@ -667,9 +722,10 @@ export function ProjectGovernanceCard(props: {
                               )
                             }
                             disabled={props.grantMemberServicesPending}
-                            className="w-full h-8 text-[10px] font-bold uppercase transition-all active:scale-95"
+                            className="h-8 w-full text-xs"
                           >
-                            Provision Services ({selectedMissingServices.length})
+                            Provision Services ({selectedMissingServices.length}
+                            )
                           </Button>
                         )}
                       </div>
@@ -680,34 +736,38 @@ export function ProjectGovernanceCard(props: {
             </div>
           </TabsContent>
 
-          <TabsContent value="services" className="space-y-4 focus-visible:outline-none">
-            <div className="flex items-start gap-3 bg-primary/5 p-4 rounded-xl border border-primary/20 mb-2">
-              <Info className="size-4 text-primary shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="text-foreground font-bold italic mr-1">Note: CMS Tools are default for all members.</span>
-                External platform services provisioned here become available for specific member grants. Manage member-level access in the <span className="text-foreground font-bold">Members</span> tab.
+          <TabsContent value="services" className="space-y-4">
+            <div className="mb-2 flex items-start gap-3 rounded-md border bg-muted/30 p-3">
+              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                CMS tools are available by default. Enable platform services
+                here and grant them to members in the Members tab.
               </p>
             </div>
 
             <div className="grid gap-3">
               {props.services.length === 0 ? (
-                <div className="py-20 text-center rounded-xl border border-dashed border-border">
-                  <Layers className="size-8 mx-auto mb-3 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground font-medium">Platform Service Catalog not synchronized.</p>
+                <div className="rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
+                  <Layers className="mx-auto mb-2 size-6" />
+                  <p>No services available.</p>
                 </div>
               ) : null}
               {props.services.map((service) => (
                 <div
                   key={service.key}
                   className={cn(
-                    "flex items-center justify-between gap-4 p-4 rounded-xl border transition-all",
-                    service.enabledForProject ? "bg-background/60 border-primary/30 shadow-sm" : "bg-muted/10 border-border/40 opacity-70"
+                    "flex items-center justify-between gap-4 rounded-md border p-4",
+                    service.enabledForProject
+                      ? "border-primary/40 bg-primary/5"
+                      : "bg-background",
                   )}
                 >
                   <div className="space-y-1">
-                    <p className="font-mono text-[11px] font-bold text-foreground/90">{service.key}</p>
+                    <p className="font-mono text-xs font-medium">
+                      {service.key}
+                    </p>
                     {service.description ? (
-                      <p className="text-[11px] text-muted-foreground max-w-lg leading-snug pr-4">
+                      <p className="max-w-lg pr-4 text-xs text-muted-foreground">
                         {service.description}
                       </p>
                     ) : null}
@@ -723,8 +783,8 @@ export function ProjectGovernanceCard(props: {
                     }
                     disabled={props.toggleProjectServicePending}
                     className={cn(
-                      "h-8 font-bold text-[10px] uppercase min-w-[80px]",
-                      service.enabledForProject ? "shadow-sm" : "text-muted-foreground border-border/60 shadow-none"
+                      "h-8 min-w-20 text-xs",
+                      service.enabledForProject ? "" : "text-muted-foreground",
                     )}
                   >
                     {service.enabledForProject ? "Active" : "Disabled"}
@@ -734,6 +794,285 @@ export function ProjectGovernanceCard(props: {
             </div>
           </TabsContent>
         </Tabs>
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatRetentionCountdown(purgeEligibleAt: string): string {
+  const now = Date.now();
+  const target = new Date(purgeEligibleAt).getTime();
+  const diffMs = target - now;
+  if (!Number.isFinite(target) || diffMs <= 0) return "Eligible for purge";
+  const totalHours = Math.ceil(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  return `${days}d ${hours}h left`;
+}
+
+export function ProjectRecycleBinCard(props: {
+  deletedPages: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    deletedAt: string;
+    purgeEligibleAt: string;
+  }>;
+  deletedBlocks: Array<{
+    id: string;
+    type: string;
+    page: { title: string; slug: string };
+    deletedAt: string;
+    purgeEligibleAt: string;
+  }>;
+  mediaTrashItems: Array<{
+    trashKey: string;
+    type: "file" | "folder";
+    name: string;
+    originalRelativePath: string | null;
+    previewUrl: string | null;
+    deletedAt: string;
+    purgeEligibleAt: string;
+  }>;
+  onRestorePage: (pageId: string) => void;
+  onRestoreBlock: (blockId: string) => void;
+  onRestoreMedia: (trashKey: string) => void;
+  onPurgePage: (pageId: string) => void;
+  onPurgeBlock: (blockId: string) => void;
+  onPurgeMedia: (trashKey: string) => void;
+  restorePending: boolean;
+}) {
+  const totalItems =
+    props.deletedPages.length +
+    props.deletedBlocks.length +
+    props.mediaTrashItems.length;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="mb-1 flex items-center gap-2 text-muted-foreground">
+          <Trash2 className="size-4" />
+          <span className="text-sm">Recycle Bin</span>
+        </div>
+        <CardTitle>Soft Deleted Content</CardTitle>
+        <CardDescription>
+          Retention window is 30 days. Restore items before they become eligible
+          for permanent purge.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {totalItems === 0 ? (
+          <div className="rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
+            Recycle bin is empty.
+          </div>
+        ) : (
+          <Tabs defaultValue="pages" className="space-y-4">
+            <TabsList className="grid h-10 w-full grid-cols-3">
+              <TabsTrigger value="pages">
+                Pages ({props.deletedPages.length})
+              </TabsTrigger>
+              <TabsTrigger value="blocks">
+                Blocks ({props.deletedBlocks.length})
+              </TabsTrigger>
+              <TabsTrigger value="media">
+                Media ({props.mediaTrashItems.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pages" className="space-y-3">
+              {props.deletedPages.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No deleted pages.
+                </p>
+              ) : (
+                props.deletedPages.map((page) => (
+                  <div
+                    key={page.id}
+                    className="flex items-center justify-between gap-3 rounded-md border p-3"
+                  >
+                    <div className="space-y-1">
+                      <p className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="size-3.5" /> {page.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        /{page.slug}
+                      </p>
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Timer className="size-3" />{" "}
+                        {formatRetentionCountdown(page.purgeEligibleAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => props.onRestorePage(page.id)}
+                        disabled={props.restorePending}
+                        className="h-8"
+                      >
+                        <RotateCcw className="size-3.5" /> Restore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Permanently delete page “${page.title}”? This cannot be undone.`,
+                            )
+                          ) {
+                            props.onPurgePage(page.id);
+                          }
+                        }}
+                        disabled={props.restorePending}
+                      >
+                        <DeleteIcon className="size-3.5" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="blocks" className="space-y-3">
+              {props.deletedBlocks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No deleted blocks.
+                </p>
+              ) : (
+                props.deletedBlocks.map((block) => (
+                  <div
+                    key={block.id}
+                    className="flex items-center justify-between gap-3 rounded-md border p-3"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{block.type}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Page: {block.page.title}
+                      </p>
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Timer className="size-3" />{" "}
+                        {formatRetentionCountdown(block.purgeEligibleAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => props.onRestoreBlock(block.id)}
+                        disabled={props.restorePending}
+                        className="h-8"
+                      >
+                        <RotateCcw className="size-3.5" /> Restore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Permanently delete block “${block.type}”? This cannot be undone.`,
+                            )
+                          ) {
+                            props.onPurgeBlock(block.id);
+                          }
+                        }}
+                        disabled={props.restorePending}
+                      >
+                        <DeleteIcon className="size-3.5" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="media" className="space-y-3">
+              {props.mediaTrashItems.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No trashed media files or folders.
+                </p>
+              ) : (
+                props.mediaTrashItems.map((item) => (
+                  <div
+                    key={item.trashKey}
+                    className="flex items-center justify-between gap-3 rounded-md border p-3"
+                  >
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/30">
+                        {item.type === "file" && item.previewUrl ? (
+                          <Image
+                            src={item.previewUrl}
+                            alt={item.name}
+                            width={64}
+                            height={64}
+                            unoptimized
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="size-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <p className="flex items-center gap-2 text-sm font-medium">
+                          <ImageIcon className="size-3.5" /> {item.name}
+                        </p>
+                        {item.originalRelativePath ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            Original: {item.originalRelativePath}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className="h-5 px-2 text-[10px] uppercase"
+                          >
+                            {item.type}
+                          </Badge>
+                          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Timer className="size-3" />{" "}
+                            {formatRetentionCountdown(item.purgeEligibleAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => props.onRestoreMedia(item.trashKey)}
+                        disabled={props.restorePending}
+                        className="h-8"
+                      >
+                        <RotateCcw className="size-3.5" /> Restore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Permanently delete ${item.name}? This cannot be undone.`,
+                            )
+                          ) {
+                            props.onPurgeMedia(item.trashKey);
+                          }
+                        }}
+                        disabled={props.restorePending}
+                      >
+                        <DeleteIcon className="size-3.5" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );

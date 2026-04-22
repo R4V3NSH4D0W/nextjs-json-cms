@@ -48,6 +48,13 @@ export const projectsApi = {
       `/api/v1/admin/projects/${projectSlug}`,
       body,
     ),
+  deleteProject: (projectSlug: string) =>
+    api.delete<{ success: true }>(`/api/v1/admin/projects/${projectSlug}`),
+  restoreProject: (projectSlug: string) =>
+    api.post<{ success: true; project: ProjectSummary }>(
+      `/api/v1/admin/projects/${projectSlug}/restore`,
+      {},
+    ),
   listTokens: (projectSlug: string) =>
     api.get<{ success: true; tokens: ProjectToken[] }>(
       `/api/v1/admin/projects/${projectSlug}/tokens`,
@@ -95,8 +102,10 @@ export const projectsApi = {
     api.get<{ success: true; users: (AdminUserSummary & { _count: { projectAccess: number } })[] }>(
       "/api/v1/admin/projects/users"
     ),
-  listAuditLogs: (params?: { performerId?: string; targetUserId?: string; projectSlug?: string; action?: string; limit?: number }) =>
-    api.get<{ success: true; logs: AuditLogEntry[] }>("/api/v1/admin/audit", { params }),
+  listAuditLogs: (params?: { performerId?: string; targetUserId?: string; projectSlug?: string; action?: string; limit?: number; page?: number }) =>
+    api.get<{ success: true; logs: AuditLogEntry[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/api/v1/admin/audit", { params }),
+  getAuditLog: (logId: string) =>
+    api.get<{ success: true; log: AuditLogEntry }>(`/api/v1/admin/audit/${logId}`),
   listUserActivity: (userId: string, params?: { limit?: number }) =>
     api.get<{ success: true; logs: AuditLogEntry[] }>(`/api/v1/admin/audit/users/${userId}`, { params }),
   handoverProject: (

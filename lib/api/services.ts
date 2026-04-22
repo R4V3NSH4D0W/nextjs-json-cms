@@ -58,6 +58,25 @@ export const cmsPageApi = {
   /** Delete a page permanently. */
   remove: (projectSlug: string, pageId: string) =>
     api.delete<Ok<Record<never, never>>>(`/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}`),
+
+  /** Restore a soft-deleted page. */
+  restore: (projectSlug: string, pageId: string) =>
+    api.post<CmsPageResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}/restore`,
+      {},
+    ),
+
+  /** Permanently delete a page from the recycle bin. */
+  purgeDeleted: (projectSlug: string, pageId: string) =>
+    api.delete<Ok<Record<never, never>>>(
+      `/api/v1/admin/projects/${projectSlug}/cms/recycle/pages/${pageId}`,
+    ),
+
+  /** List soft-deleted pages with retention metadata. */
+  listDeleted: (projectSlug: string) =>
+    api.get<Ok<{ pages: Array<CmsPage & { deletedAt: string; purgeEligibleAt: string; retentionDays: number }> }>>(
+      `/api/v1/admin/projects/${projectSlug}/cms/recycle/pages`,
+    ),
 };
 
 // ─── Admin — CMS Blocks ───────────────────────────────────────────────────────
@@ -94,6 +113,25 @@ export const cmsBlockApi = {
   remove: (projectSlug: string, blockId: string) =>
     api.delete<Ok<Record<never, never>>>(
       `/api/v1/admin/projects/${projectSlug}/cms/blocks/${blockId}`,
+    ),
+
+  /** Restore a soft-deleted block. */
+  restore: (projectSlug: string, blockId: string) =>
+    api.post<CmsBlockResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/blocks/${blockId}/restore`,
+      {},
+    ),
+
+  /** Permanently delete a block from the recycle bin. */
+  purgeDeleted: (projectSlug: string, blockId: string) =>
+    api.delete<Ok<Record<never, never>>>(
+      `/api/v1/admin/projects/${projectSlug}/cms/recycle/blocks/${blockId}`,
+    ),
+
+  /** List soft-deleted blocks with retention metadata. */
+  listDeleted: (projectSlug: string) =>
+    api.get<Ok<{ blocks: Array<{ id: string; type: string; pageId: string; page: { id: string; title: string; slug: string }; deletedAt: string; purgeEligibleAt: string; retentionDays: number }> }>>(
+      `/api/v1/admin/projects/${projectSlug}/cms/recycle/blocks`,
     ),
 
   /** Reorder all blocks on a page in one shot. */
@@ -230,6 +268,25 @@ export const mediaApi = {
     api.delete<Ok<Record<never, never>>>(
       `/api/v1/admin/projects/${projectSlug}/media/gallery/file?url=${encodeURIComponent(url)}`,
     ),
+
+  /** List media trash items. */
+  listTrash: (projectSlug: string) =>
+    api.get<Ok<{ items: Array<{ trashKey: string; type: "file" | "folder"; name: string; originalRelativePath: string | null; previewUrl: string | null; deletedAt: string; purgeEligibleAt: string; retentionDays: number }> }>>(
+      `/api/v1/admin/projects/${projectSlug}/media/gallery/trash/list`,
+    ),
+
+  /** Restore a media item from trash into project media folder. */
+  restoreFromTrash: (projectSlug: string, body: { trashKey: string; folder?: string }) =>
+    api.post<Ok<{ item: { url: string; name: string } }>>(
+      `/api/v1/admin/projects/${projectSlug}/media/gallery/trash/restore`,
+      body,
+    ),
+
+  /** Permanently delete a media item from the recycle bin. */
+  purgeTrashItem: (projectSlug: string, trashKey: string) =>
+    api.delete<Ok<Record<never, never>>>(
+      `/api/v1/admin/projects/${projectSlug}/media/gallery/trash?trashKey=${encodeURIComponent(trashKey)}`,
+    ),
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -278,14 +335,14 @@ export type PublicPageDetail = PublicPage & {
 export const publicCmsApi = {
   /** List all published public pages. */
   listPages: () =>
-    api.get<Ok<{ pages: PublicPage[] }>>('/api/v1/cms/pages', {
+    api.get<Ok<{ pages: PublicPage[] }>>('/api/v1/pages', {
       next: { tags: ['public-cms-pages'], revalidate: REVALIDATE },
     }),
 
   /** Get a published page by slug or ID. Calls Next.js notFound() on 404. */
   getPage: (slugOrId: string) =>
     api.get<Ok<{ page: PublicPageDetail }>>(
-      `/api/v1/cms/pages/${encodeURIComponent(slugOrId)}`,
+      `/api/v1/pages/${encodeURIComponent(slugOrId)}`,
       {
         next: {
           tags: [`public-cms-page-${slugOrId}`],
@@ -296,20 +353,20 @@ export const publicCmsApi = {
 
   /** Public navigation config (storefront). */
   getNavigation: () =>
-    api.get<Ok<{ navigation: CmsNavigationConfig }>>('/api/v1/cms/navigation', {
+    api.get<Ok<{ navigation: CmsNavigationConfig }>>('/api/v1/navigation', {
       next: { tags: ['public-navigation'], revalidate: REVALIDATE },
     }),
 
   /** Public footer config (storefront). */
   getFooter: () =>
-    api.get<Ok<{ footer: CmsFooterConfig }>>('/api/v1/cms/footer', {
+    api.get<Ok<{ footer: CmsFooterConfig }>>('/api/v1/footer', {
       next: { tags: ['public-footer'], revalidate: REVALIDATE },
     }),
 
   /** Public announcements config (storefront). */
   getAnnouncements: () =>
     api.get<Ok<{ announcements: CmsAnnouncementsConfig }>>(
-      '/api/v1/cms/announcements',
+      '/api/v1/announcements',
       { next: { tags: ['public-announcements'], revalidate: REVALIDATE } },
     ),
 };

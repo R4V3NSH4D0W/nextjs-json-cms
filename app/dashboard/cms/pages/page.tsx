@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { useCmsPages, useDeleteCmsPage } from "@/hooks/use-cms";
 import type { CmsPage } from "@/lib/cms/api";
-import { absoluteApiUrl } from "@/lib/cms/absolute-url";
+import { absoluteTenantApiUrl } from "@/lib/cms/absolute-url";
 import {
   publicCmsPageApiPath,
   trimPublicApiPathDisplay,
@@ -28,34 +29,48 @@ import {
 
 /**
  * Public storefront CMS route (no auth). Same as headless / Next.js public fetch.
- * @see GET /api/v1/cms/pages/:slugOrId — slug or page id (cuid).
+ * @see GET /api/v1/pages/:slugOrId — slug or page id (cuid).
  */
 function Page() {
   const { currentProject } = useCurrentProject();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "archived" | "all"
+  >("active");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { data, isLoading, isError, error, refetch } = useCmsPages();
   const deletePage = useDeleteCmsPage();
 
+  const pages = data?.pages ?? [];
+  const counts = useMemo(() => {
+    const active = pages.filter((p) => p.isActive).length;
+    const archived = pages.filter((p) => !p.isActive).length;
+    return { all: pages.length, active, archived };
+  }, [pages]);
+
   const rows = useMemo(() => {
     const pages = data?.pages ?? [];
+    const byStatus =
+      statusFilter === "all"
+        ? pages
+        : statusFilter === "active"
+          ? pages.filter((p) => p.isActive)
+          : pages.filter((p) => !p.isActive);
     const q = search.trim().toLowerCase();
-    if (!q) return pages;
-    return pages.filter(
+    if (!q) return byStatus;
+    return byStatus.filter(
       (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q)
+        p.title.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
     );
-  }, [data?.pages, search]);
+  }, [data?.pages, search, statusFilter]);
 
   const selectedIds = useMemo(
     () => new Set(Object.keys(rowSelection).filter((id) => rowSelection[id])),
-    [rowSelection]
+    [rowSelection],
   );
 
-  const allSelected =
-    rows.length > 0 && selectedIds.size === rows.length;
+  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
 
   function toggleAll(checked: boolean) {
@@ -109,6 +124,21 @@ function Page() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
+      <Tabs
+        value={statusFilter}
+        onValueChange={(value) =>
+          setStatusFilter(value as "active" | "archived" | "all")
+        }
+      >
+        <TabsList className="h-9">
+          <TabsTrigger value="active">Active ({counts.active})</TabsTrigger>
+          <TabsTrigger value="archived">
+            Archived ({counts.archived})
+          </TabsTrigger>
+          <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {isError && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error instanceof Error ? error.message : "Failed to load pages."}{" "}
@@ -129,7 +159,9 @@ function Page() {
               <TableHead className="w-12">
                 <Checkbox
                   aria-label="Select all"
-                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  checked={
+                    allSelected ? true : someSelected ? "indeterminate" : false
+                  }
                   onCheckedChange={(v) => toggleAll(v === true)}
                   disabled={rows.length === 0 || isLoading}
                 />
@@ -148,82 +180,84 @@ function Page() {
             ) : rows.length ? (
               rows.map((row) => {
                 const apiPath = publicCmsPageApiPath(
-                  currentProject?.slug ?? "main",
                   row.slug?.trim() || row.id,
                 );
-                const apiHref = absoluteApiUrl(apiPath);
+                const apiHref = absoluteTenantApiUrl(apiPath, {
+                  slug: currentProject?.slug,
+                  primaryDomain: currentProject?.primaryDomain,
+                });
                 return (
-                <TableRow
-                  key={row.id}
-                  data-state={rowSelection[row.id] ? "selected" : undefined}
-                >
-                  <TableCell>
-                    <Checkbox
-                      aria-label={`Select ${row.title}`}
-                      checked={!!rowSelection[row.id]}
-                      onCheckedChange={(v) => toggleRow(row.id, v === true)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/dashboard/cms/pages/${row.id}`}
-                      className="text-foreground flex flex-row flex-wrap items-center gap-2 underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {row.title}
-                      {row.draftData != null ? (
-                        <Badge variant="secondary" className="font-normal">
-                          Admin draft
-                        </Badge>
-                      ) : null}
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {row.slug}
-                  </TableCell>
-                  <TableCell>
-                    {!row.isActive ? (
-                      <span className="text-muted-foreground">Archived</span>
-                    ) : row.published ? (
-                      <span className="text-emerald-600 dark:text-emerald-400">
-                        Live
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Draft</span>
-                    )}
-                  </TableCell>
-                   
-                  <TableCell className="text-muted-foreground">
-                    {format(new Date(row.updatedAt), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell className="max-w-[min(280px,40vw)]">
-                    <a
-                      href={apiHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex max-w-full items-center gap-1 font-mono text-xs text-primary underline-offset-2 hover:underline"
-                      title={`${apiHref}\n(Public JSON; draft or inactive pages may 404.)`}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                      <span className="min-w-0 truncate">
-                        {trimPublicApiPathDisplay(apiPath)}
-                      </span>
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      aria-label={`Delete ${row.title}`}
-                      disabled={deletePage.isPending}
-                      onClick={() => handleDeleteRow(row)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                  <TableRow
+                    key={row.id}
+                    data-state={rowSelection[row.id] ? "selected" : undefined}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        aria-label={`Select ${row.title}`}
+                        checked={!!rowSelection[row.id]}
+                        onCheckedChange={(v) => toggleRow(row.id, v === true)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/dashboard/cms/pages/${row.id}`}
+                        className="text-foreground flex flex-row flex-wrap items-center gap-2 underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {row.title}
+                        {row.draftData != null ? (
+                          <Badge variant="secondary" className="font-normal">
+                            Admin draft
+                          </Badge>
+                        ) : null}
+                        <ExternalLink className="h-4 w-4" />
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">
+                      {row.slug}
+                    </TableCell>
+                    <TableCell>
+                      {!row.isActive ? (
+                        <span className="text-muted-foreground">Archived</span>
+                      ) : row.published ? (
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          Live
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Draft</span>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(row.updatedAt), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell className="max-w-[min(280px,40vw)]">
+                      <a
+                        href={apiHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex max-w-full items-center gap-1 font-mono text-xs text-primary underline-offset-2 hover:underline"
+                        title={`${apiHref}\n(Public JSON; draft or inactive pages may 404.)`}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                        <span className="min-w-0 truncate">
+                          {trimPublicApiPathDisplay(apiPath)}
+                        </span>
+                      </a>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        aria-label={`Delete ${row.title}`}
+                        disabled={deletePage.isPending}
+                        onClick={() => handleDeleteRow(row)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             ) : (
@@ -251,8 +285,8 @@ function loadingRows() {
           <TableCell colSpan={8}>
             <div className="flex items-center gap-3 py-2">
               <Skeleton className="h-4 w-4" />
-              <Skeleton className="h-4 flex-1 max-w-[200px]" />
-              <Skeleton className="h-4 flex-1 max-w-[120px]" />
+              <Skeleton className="h-4 flex-1 max-w-50" />
+              <Skeleton className="h-4 flex-1 max-w-30" />
               <Skeleton className="h-4 w-16" />
             </div>
           </TableCell>

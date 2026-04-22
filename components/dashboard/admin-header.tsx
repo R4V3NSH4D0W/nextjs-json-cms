@@ -29,6 +29,9 @@ export function AdminHeader({
   const { currentProject, projects } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
   const initial = userEmail.slice(0, 2).toUpperCase();
+  const activeProjects = projects.filter(
+    (project) => project.status === "active",
+  );
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-4 lg:px-6">
@@ -41,11 +44,15 @@ export function AdminHeader({
       <div className="flex flex-1 items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-muted-foreground">
-            {mode === "admin" ? "Platform Administration" : (currentProject ? `Project: ${currentProject.name}` : "Dashboard")}
+            {mode === "admin"
+              ? "Platform Administration"
+              : currentProject
+                ? `Project: ${currentProject.name}`
+                : "Dashboard"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {mode === "dashboard" && projects.length > 0 ? (
+          {mode === "dashboard" && activeProjects.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -54,13 +61,22 @@ export function AdminHeader({
                   className="hidden md:inline-flex gap-2 border-border/60 hover:bg-muted font-medium"
                 >
                   {currentProject?.name ?? "Select Project"}
-                  <PanelLeft className="size-3.5 rotate-[-90deg] opacity-50" />
+                  <PanelLeft className="size-3.5 -rotate-90 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-border/50">
-                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest pb-2 px-2">Switch Workspace</DropdownMenuLabel>
-                {projects.map((project) => (
-                  <DropdownMenuItem key={project.id} asChild className="rounded-md focus:bg-primary/5 focus:text-primary transition-colors">
+              <DropdownMenuContent
+                align="end"
+                className="w-64 p-2 shadow-xl border-border/50"
+              >
+                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest pb-2 px-2">
+                  Switch Workspace
+                </DropdownMenuLabel>
+                {activeProjects.map((project) => (
+                  <DropdownMenuItem
+                    key={project.id}
+                    asChild
+                    className="rounded-md focus:bg-primary/5 focus:text-primary transition-colors"
+                  >
                     <Link
                       href={`/dashboard/projects/select?slug=${encodeURIComponent(project.slug)}&redirect=/dashboard`}
                       className="flex items-center justify-between w-full"
@@ -75,8 +91,14 @@ export function AdminHeader({
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild className="rounded-md focus:bg-primary/5 focus:text-primary transition-colors">
-                      <Link href="/admin/projects" className="font-bold text-xs uppercase tracking-tight">
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-md focus:bg-primary/5 focus:text-primary transition-colors"
+                    >
+                      <Link
+                        href="/admin/projects"
+                        className="font-bold text-xs uppercase tracking-tight"
+                      >
                         Manage All Projects
                       </Link>
                     </DropdownMenuItem>
@@ -98,7 +120,7 @@ export function AdminHeader({
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden flex-col items-start gap-0.5 text-left md:flex">
-                  <span className="max-w-[140px] truncate text-xs font-semibold leading-none">
+                  <span className="max-w-35 truncate text-xs font-semibold leading-none">
                     {userEmail}
                   </span>
                   <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
@@ -107,7 +129,10 @@ export function AdminHeader({
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60 p-2 shadow-xl border-border/50">
+            <DropdownMenuContent
+              align="end"
+              className="w-60 p-2 shadow-xl border-border/50"
+            >
               <DropdownMenuLabel className="font-normal p-2">
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest leading-none">

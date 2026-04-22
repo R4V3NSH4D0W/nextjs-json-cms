@@ -61,7 +61,10 @@ function FooterLayoutSectionsTab({
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[200px] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          style={{ minHeight: 200 }}
+        >
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading layout editor…
         </div>
@@ -142,7 +145,9 @@ export default function CmsFooterPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={publicCmsFooterApiPath(currentProject?.slug ?? "main")}
+            apiPath={publicCmsFooterApiPath()}
+            tenantSlug={currentProject?.slug}
+            tenantDomain={currentProject?.primaryDomain}
             titleHint="Public JSON: success + layout configValues keys (flat), not nested sections."
           />
         </div>

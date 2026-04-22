@@ -57,8 +57,8 @@ export const useUpdateCmsPage = () => {
     mutationFn: ({ id, data }: { id: string; data: CmsPageUpdateBody }) =>
       cmsApi.updatePage(currentProject!.slug, id, data),
     onSuccess: (_res, { id }) => {
+      // Prefix-invalidate all cms-pages queries (list + individual).
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
-      queryClient.invalidateQueries({ queryKey: ["cms-pages", id] });
       toast.success("Page updated successfully");
     },
     onError: (error: Error) => {
@@ -203,6 +203,7 @@ export const useCreateCmsLayout = () => {
       referenceImageUrl?: string | null;
     }) => cmsApi.createLayout(currentProject!.slug, data),
     onSuccess: () => {
+      // Prefix-invalidate all cms-layouts queries (list + individual).
       queryClient.invalidateQueries({ queryKey: ["cms-layouts"] });
       toast.success("Layout created");
     },
@@ -228,9 +229,9 @@ export const useUpdateCmsLayout = () => {
         referenceImageUrl?: string | null;
       };
     }) => cmsApi.updateLayout(currentProject!.slug, id, data),
-    onSuccess: (_res, { id }) => {
+    onSuccess: () => {
+      // Prefix-invalidate all cms-layouts queries (list + individual).
       queryClient.invalidateQueries({ queryKey: ["cms-layouts"] });
-      queryClient.invalidateQueries({ queryKey: ["cms-layouts", id] });
       toast.success("Layout updated");
     },
     onError: (error: Error) => {

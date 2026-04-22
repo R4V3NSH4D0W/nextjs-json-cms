@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  LayoutGrid,
   FileText,
   LayoutTemplate,
+  Trash2,
   Menu,
   PanelBottom,
   Megaphone,
@@ -18,9 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { 
-  useCurrentProject 
-} from "@/components/providers/current-project-provider";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { cn } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/button";
@@ -52,7 +50,7 @@ const platformNav: NavItem[] = [
   { href: "/admin/audit", label: "Audit Logs", icon: ShieldCheck },
 ];
 
-const projectMainNav: NavItem[] = [
+const projectMainNavBase: NavItem[] = [
   { href: "/dashboard", label: "Project Overview", icon: LayoutDashboard },
   {
     href: "/dashboard/media",
@@ -105,10 +103,22 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AdminSidebar({ mode = "dashboard" }: { mode?: "admin" | "dashboard" }) {
+export function AdminSidebar({
+  mode = "dashboard",
+}: {
+  mode?: "admin" | "dashboard";
+}) {
   const pathname = usePathname();
-  const { currentProject, hasService } = useCurrentProject();
+  const { currentProject, currentAccess, hasService } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
+
+  const canManageProject = isAdmin || currentAccess?.canManageProject === true;
+  const projectMainNav: NavItem[] = canManageProject
+    ? [
+        ...projectMainNavBase,
+        { href: "/dashboard/recycle-bin", label: "Recycle Bin", icon: Trash2 },
+      ]
+    : projectMainNavBase;
 
   const visibleProjectMainNav = projectMainNav.filter(
     (item) => !item.feature || hasService(item.feature),
@@ -135,7 +145,9 @@ export function AdminSidebar({ mode = "dashboard" }: { mode?: "admin" | "dashboa
               {mode === "admin" ? "Platform Admin" : "Project Dashboard"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {mode === "admin" ? "System Core" : (currentProject?.name ?? "No Project")}
+              {mode === "admin"
+                ? "System Core"
+                : (currentProject?.name ?? "No Project")}
             </p>
           </div>
         </div>
@@ -240,7 +252,12 @@ export function AdminSidebar({ mode = "dashboard" }: { mode?: "admin" | "dashboa
       </SidebarContent>
       {mode === "dashboard" && isAdmin && (
         <div className="mt-auto p-4 border-t border-sidebar-border group-data-[collapsible=icon]:hidden">
-          <Button asChild variant="outline" size="sm" className="w-full text-[10px] uppercase tracking-widest font-bold h-8">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="w-full text-[10px] uppercase tracking-widest font-bold h-8"
+          >
             <Link href="/admin">Return to admin</Link>
           </Button>
         </div>

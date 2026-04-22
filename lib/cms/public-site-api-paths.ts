@@ -1,26 +1,26 @@
 /**
  * Public storefront CMS routes (no admin auth), parallel to
- * `GET /api/v1/cms/pages` / `GET /api/v1/cms/pages/:slugOrId`.
+ * `GET /api/v1/pages` / `GET /api/v1/pages/:slugOrId`.
  *
  * **Site chrome** responses are **flat**: `{ success: true, ...layoutRootKeys }` from the first
  * active section’s **`configValues`**. **Announcements** when **`enabled: false`**: only
  * `{ success: true, enabled: false }` — no layout keys. Not the nested admin document shape.
  */
 
-export function publicCmsNavigationApiPath(projectSlug: string) {
-  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/navigation`;
+export function publicCmsNavigationApiPath() {
+  return `/api/v1/navigation`;
 }
 
-export function publicCmsFooterApiPath(projectSlug: string) {
-  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/footer`;
+export function publicCmsFooterApiPath() {
+  return `/api/v1/footer`;
 }
 
-export function publicCmsAnnouncementsApiPath(projectSlug: string) {
-  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/announcements`;
+export function publicCmsAnnouncementsApiPath() {
+  return `/api/v1/announcements`;
 }
 
-export function publicCmsPageApiPath(projectSlug: string, slugOrId: string) {
-  return `/api/v1/projects/${encodeURIComponent(projectSlug)}/pages/${encodeURIComponent(slugOrId)}`;
+export function publicCmsPageApiPath(slugOrId: string) {
+  return `/api/v1/pages/${encodeURIComponent(slugOrId)}`;
 }
 
 /** Short label for long API paths (middle ellipsis). */

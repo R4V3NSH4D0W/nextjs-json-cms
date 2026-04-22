@@ -56,8 +56,9 @@ export function ProvisionProjectSheet() {
           <Plus className="size-4" /> Provision Project
         </Button>
       </SheetTrigger>
-      <SheetContent className="sm:max-w-md border-l border-border bg-card/95 backdrop-blur-md">
-        <SheetHeader className="space-y-4 pb-6 border-b border-border/50">
+      <SheetContent className="w-[96vw] sm:w-170 sm:max-w-170 border-l border-border bg-card/95 backdrop-blur-md p-0">
+        <div className="flex h-full flex-col">
+        <SheetHeader className="space-y-4 border-b border-border/50 px-6 pb-6 pt-6">
           <div className="flex items-center gap-2 text-primary">
             <Server className="size-5" />
             <p className="text-[10px] font-extrabold uppercase tracking-[0.2em]">New Instance</p>
@@ -68,7 +69,8 @@ export function ProvisionProjectSheet() {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6 py-8">
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="space-y-6">
           <div className="space-y-4">
              <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Identity</Label>
@@ -99,7 +101,7 @@ export function ProvisionProjectSheet() {
                   placeholder="What is the primary purpose of this project?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="bg-background/50 border-border/60 min-h-[120px] resize-none focus:ring-primary/20"
+                  className="bg-background/50 border-border/60 min-h-30 resize-none focus:ring-primary/20"
                 />
              </div>
 
@@ -122,9 +124,10 @@ export function ProvisionProjectSheet() {
                 </div>
              </div>
           </div>
+          </div>
         </div>
 
-        <SheetFooter className="absolute bottom-0 left-0 w-full p-6 bg-card/80 backdrop-blur-sm border-t border-border/50">
+        <SheetFooter className="border-t border-border/50 bg-card/80 p-6 backdrop-blur-sm">
           <Button
             className="w-full font-bold h-12 text-base"
             onClick={() => createProject.mutate()}
@@ -133,6 +136,7 @@ export function ProvisionProjectSheet() {
             {createProject.isPending ? "Provisioning Agent Active..." : "Deploy Tenant Instance"}
           </Button>
         </SheetFooter>
+        </div>
       </SheetContent>
     </Sheet>
   );

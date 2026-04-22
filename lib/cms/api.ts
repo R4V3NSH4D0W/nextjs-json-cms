@@ -67,7 +67,7 @@ export interface CmsPage extends CmsPageSeoFields {
   title: string;
   /** Enabled in CMS (not archived). */
   isActive: boolean;
-  /** Live on public `/api/v1/cms/pages/...`. */
+  /** Live on public `/api/v1/pages/...`. */
   published: boolean;
   /** Admin-only draft; public API ignores until Publish. */
   draftData?: unknown | null;
@@ -327,16 +327,19 @@ export const cmsApi = {
    */
   getPublicNavigation: (projectSlug: string) =>
     api.get<{ success: boolean } & Record<string, unknown>>(
-      publicCmsNavigationApiPath(projectSlug)
+      publicCmsNavigationApiPath(),
+      { headers: { "x-tenant-slug": projectSlug } }
     ),
 
   getPublicFooter: (projectSlug: string) =>
     api.get<{ success: boolean } & Record<string, unknown>>(
-      publicCmsFooterApiPath(projectSlug)
+      publicCmsFooterApiPath(),
+      { headers: { "x-tenant-slug": projectSlug } }
     ),
 
   getPublicAnnouncements: (projectSlug: string) =>
     api.get<{ success: boolean } & Record<string, unknown>>(
-      publicCmsAnnouncementsApiPath(projectSlug)
+      publicCmsAnnouncementsApiPath(),
+      { headers: { "x-tenant-slug": projectSlug } }
     ),
 };

@@ -29,7 +29,10 @@ export default async function DashboardLayout({
     ? ((await res.json()) as { projects?: ProjectSummary[] })
     : { projects: [] };
   const projects = data.projects ?? [];
-  const currentProject = await getCurrentProjectFromRequest(projects);
+  const activeProjects = projects.filter(
+    (project) => project.status === "active",
+  );
+  const currentProject = await getCurrentProjectFromRequest(activeProjects);
 
   let currentAccess: ProjectAccessSummary | null = null;
   if (currentProject) {
@@ -52,7 +55,7 @@ export default async function DashboardLayout({
     <AdminDashboardShell
       userEmail={session.user.email}
       isAdmin={session.user.isAdmin}
-      projects={projects}
+      projects={activeProjects}
       currentProject={currentProject}
       currentAccess={currentAccess}
     >

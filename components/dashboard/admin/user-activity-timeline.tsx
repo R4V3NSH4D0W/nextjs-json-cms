@@ -1,37 +1,29 @@
 "use client";
 
+import type { ComponentType } from "react";
 import { useQuery } from "@/lib/shared/react-query";
 import { projectsApi } from "@/lib/projects/api";
+import type { AuditLogEntry } from "@/lib/projects/types";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  History, 
-  UserPlus, 
-  UserMinus, 
-  ShieldAlert, 
-  Settings, 
-  Key, 
-  FileText, 
-  Plus, 
+import {
+  History,
+  UserPlus,
+  UserMinus,
+  ShieldAlert,
+  Settings,
+  Key,
+  FileText,
+  Plus,
   ToggleLeft,
-  ChevronRight
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/shared/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type AuditLog = {
-  id: string;
-  action: string;
-  performerId: string;
-  performerEmail: string;
-  projectSlug: string | null;
-  projectId: string | null;
-  targetUserId: string | null;
-  metadata: any;
-  createdAt: string;
-};
+type IconComponent = ComponentType<{ className?: string }>;
 
-const actionIcons: Record<string, any> = {
+const actionIcons: Record<string, IconComponent> = {
   PROJECT_CREATED: Plus,
   PROJECT_UPDATED: Settings,
   MEMBER_ADDED: UserPlus,
@@ -61,7 +53,7 @@ export function UserActivityTimeline({ userId, limit = 20 }: { userId: string; l
     queryFn: () => projectsApi.listUserActivity(userId, { limit }),
   });
 
-  const logs = (data?.logs ?? []) as AuditLog[];
+  const logs: AuditLogEntry[] = data?.logs ?? [];
 
   if (isLoading) {
     return (
@@ -86,33 +78,33 @@ export function UserActivityTimeline({ userId, limit = 20 }: { userId: string; l
     <ScrollArea className="h-full">
       <div className="space-y-6 p-4">
         {logs.map((log, i) => {
-          const Icon = actionIcons[log.action] || History;
+          const Icon: IconComponent = actionIcons[log.action] ?? History;
           const isTarget = log.targetUserId === userId;
-          
+
           return (
             <div key={log.id} className="relative flex gap-4">
               {/* Timeline Line */}
               {i !== logs.length - 1 && (
                 <div className="absolute left-[15px] top-8 h-full w-[1px] bg-border" />
               )}
-              
+
               <div className={cn(
                 "flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-background shadow-sm",
                 isTarget ? "border-amber-500/30 bg-amber-500/5 text-amber-500" : "text-primary"
               )}>
                 <Icon className="size-4" />
               </div>
-              
+
               <div className="flex-1 space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold leading-none tracking-tight">
-                    {actionLabels[log.action] || log.action.replace(/_/g, " ").toLowerCase()}
+                    {actionLabels[log.action] ?? log.action.replace(/_/g, " ").toLowerCase()}
                   </p>
                   <time className="text-[10px] text-muted-foreground tabular-nums">
                     {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                   </time>
                 </div>
-                
+
                 <div className="flex flex-col gap-1">
                   {log.projectSlug && (
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
@@ -120,13 +112,13 @@ export function UserActivityTimeline({ userId, limit = 20 }: { userId: string; l
                       <span>Project: <span className="text-foreground">{log.projectSlug}</span></span>
                     </div>
                   )}
-                  
+
                   {isTarget && (
                     <p className="text-[10px] text-amber-600 font-bold uppercase tracking-tight">
                       Action targeted this user
                     </p>
                   )}
-                  
+
                   {!isTarget && log.performerId !== userId && (
                     <p className="text-[10px] text-muted-foreground">
                       By: <span className="font-medium text-foreground">{log.performerEmail}</span>
