@@ -3,6 +3,7 @@
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import type { CmsCustomTool } from "@/lib/cms/api";
 import {
   GROUP_LABEL,
   SECTION_TOOLS,
@@ -12,8 +13,12 @@ import {
 
 export function LayoutBuilderGroupedToolPalette({
   onPick,
+  customTools,
+  onPickCustom,
 }: {
   onPick: (type: SectionBlockType) => void;
+  customTools?: CmsCustomTool[];
+  onPickCustom?: (tool: CmsCustomTool) => void;
 }) {
   const groups: SectionTool["group"][] = ["content", "primitive", "structure"];
 
@@ -53,6 +58,33 @@ export function LayoutBuilderGroupedToolPalette({
           </div>
         </div>
       ))}
+      <Separator className="mb-3" />
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Custom
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {(customTools ?? []).length > 0 ? (
+          (customTools ?? []).map((tool) => (
+            <Button
+              key={tool.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 px-2.5 text-xs font-normal"
+              onClick={() => onPickCustom?.(tool)}
+              title={tool.description ?? `Insert "${tool.name}"`}
+              disabled={!onPickCustom}
+            >
+              <Sparkles className="h-3.5 w-3.5 opacity-80" />
+              {tool.name}
+            </Button>
+          ))
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            No custom tools yet. Create one in CMS Tools.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

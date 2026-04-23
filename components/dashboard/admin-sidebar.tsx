@@ -11,6 +11,7 @@ import {
   PanelBottom,
   Megaphone,
   Images,
+  Hammer,
   FolderKanban,
   ShieldCheck,
   Users,
@@ -71,6 +72,12 @@ const cmsNav: NavItem[] = [
     href: "/dashboard/cms/layouts",
     label: "Layouts",
     icon: LayoutTemplate,
+    feature: "cms.layouts.read",
+  },
+  {
+    href: "/dashboard/cms/tools",
+    label: "Tools",
+    icon: Hammer,
     feature: "cms.layouts.read",
   },
   {

@@ -129,6 +129,34 @@ export interface CmsLayoutResponse {
   layout: CmsLayout;
 }
 
+export type CmsCustomToolDefinition = {
+  type: string;
+  key?: string;
+  children?: CmsCustomToolDefinition[];
+  defaultStr?: string;
+  defaultLink?: { value?: string; href?: string; target?: string };
+  required?: boolean;
+};
+
+export interface CmsCustomTool {
+  id: string;
+  name: string;
+  description?: string | null;
+  definition: CmsCustomToolDefinition;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsCustomToolsResponse {
+  success: boolean;
+  tools: CmsCustomTool[];
+}
+
+export interface CmsCustomToolResponse {
+  success: boolean;
+  tool: CmsCustomTool;
+}
+
 type CmsPageSeoCreatePatch = Partial<
   Pick<
     CmsPageSeoFields,
@@ -285,6 +313,48 @@ export const cmsApi = {
   deleteLayout: (projectSlug: string, id: string) =>
     api.delete<{ success: boolean; message?: string }>(
       `/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`
+    ),
+
+  listCustomTools: (projectSlug: string) =>
+    api.get<CmsCustomToolsResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools`
+    ),
+
+  getCustomTool: (projectSlug: string, id: string) =>
+    api.get<CmsCustomToolResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`
+    ),
+
+  createCustomTool: (
+    projectSlug: string,
+    data: {
+      name: string;
+      description?: string | null;
+      definition: CmsCustomToolDefinition;
+    }
+  ) =>
+    api.post<CmsCustomToolResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools`,
+      data
+    ),
+
+  updateCustomTool: (
+    projectSlug: string,
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string | null;
+      definition: CmsCustomToolDefinition;
+    }>
+  ) =>
+    api.patch<CmsCustomToolResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`,
+      data
+    ),
+
+  deleteCustomTool: (projectSlug: string, id: string) =>
+    api.delete<{ success: boolean; message?: string }>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`
     ),
 
   /** Site chrome — nested trees (backend may 404 until implemented; dashboard uses session fallback). */

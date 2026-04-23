@@ -4,6 +4,7 @@ import {
   FileText,
   Images,
   LayoutTemplate,
+  Hammer,
   Megaphone,
   Menu,
   PanelBottom,
@@ -23,6 +24,12 @@ const items = [
     description: "Reusable section schemas",
     href: "/dashboard/cms/layouts",
     icon: LayoutTemplate,
+  },
+  {
+    title: "Tools",
+    description: "Reusable layout field snippets",
+    href: "/dashboard/cms/tools",
+    icon: Hammer,
   },
   {
     title: "Navigation",

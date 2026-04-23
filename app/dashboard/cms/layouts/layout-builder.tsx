@@ -48,9 +48,11 @@ import { LayoutBuilderGroupedToolPalette } from "@/components/cms/layout-builder
 import { cn } from "@/lib/shared/utils";
 import { useCurrentProject } from "@/components/providers/current-project-provider";
 import {
+  addCustomChildToContainer,
   addChildToContainer,
   buildExportJson,
   createBlock,
+  createBlockFromCustomTool,
   duplicateKeysAmong,
   hasEmptyKeyRecursive,
   isValidSectionRootKey,
@@ -74,9 +76,11 @@ import {
 } from "@/lib/cms/layout-payload";
 import {
   useCmsLayout,
+  useCmsCustomTools,
   useCreateCmsLayout,
   useUpdateCmsLayout,
 } from "@/hooks/use-cms";
+import type { CmsCustomTool } from "@/lib/cms/api";
 
 export type { LayoutBuilderProps, SectionBlock, SectionBlockType };
 
@@ -106,6 +110,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
 
   const createLayout = useCreateCmsLayout();
   const updateLayout = useUpdateCmsLayout();
+  const customToolsQuery = useCmsCustomTools();
 
   useEffect(() => {
     hydratedRef.current = false;
@@ -166,6 +171,45 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
       setBlocks((prev) =>
         addChildToContainer(prev, containerId, type, childDepth),
       );
+    },
+    [],
+  );
+
+  const addCustomRoot = useCallback((tool: CmsCustomTool) => {
+    setBlocks((prev) => {
+      const keys = siblingKeysFrom(prev);
+      try {
+        return [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? `Tool "${tool.name}" is invalid: ${error.message}`
+            : `Tool "${tool.name}" is invalid.`,
+        );
+        return prev;
+      }
+    });
+  }, []);
+
+  const addCustomIntoContainer = useCallback(
+    (containerId: string, tool: CmsCustomTool, childDepth: number) => {
+      setBlocks((prev) => {
+        try {
+          return addCustomChildToContainer(
+            prev,
+            containerId,
+            tool.definition,
+            childDepth,
+          );
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? `Tool "${tool.name}" is invalid: ${error.message}`
+              : `Tool "${tool.name}" is invalid.`,
+          );
+          return prev;
+        }
+      });
     },
     [],
   );
@@ -345,6 +389,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
     updateLayout,
     isEdit,
     layoutId,
+    currentProject?.slug,
     returnToRaw,
     router,
   ]);
@@ -610,11 +655,13 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
                           }
                           onRemove={removeBlock}
                           onAddIntoContainer={addIntoContainer}
+                          onAddCustomIntoContainer={addCustomIntoContainer}
                           onKeyChange={setBlockKey}
                           onDefaultChange={setBlockDefault}
                           onDefaultLinkChange={setBlockDefaultLink}
                           onRequiredChange={setBlockRequired}
                           onMoveBlock={moveBlock}
+                          customTools={customToolsQuery.data?.tools ?? []}
                         />
                       ))}
                     </ul>
@@ -635,7 +682,11 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
               <span className="font-medium text-foreground">Description</span>{" "}
               (rich HTML).
             </p>
-            <LayoutBuilderGroupedToolPalette onPick={addRoot} />
+            <LayoutBuilderGroupedToolPalette
+              onPick={addRoot}
+              customTools={customToolsQuery.data?.tools ?? []}
+              onPickCustom={addCustomRoot}
+            />
           </div>
         </div>
 

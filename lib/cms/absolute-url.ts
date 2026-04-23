@@ -2,10 +2,7 @@
  * Builds a browser-usable URL for API-hosted paths (e.g. `/uploads/cms/x.jpg`).
  */
 function resolveApiBaseParts() {
-  const rawBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "";
+  const rawBase = process.env.NEXT_PUBLIC_API_URL || "";
   const normalizedBase = rawBase.replace(/\/$/, "");
   const baseWithProtocol = normalizedBase
     ? /^(https?:)?\/\//i.test(normalizedBase)
@@ -32,7 +29,7 @@ export function absoluteApiUrl(path: string): string {
   }
   if (trimmedPath.startsWith("//")) return `https:${trimmedPath}`;
 
-  const { baseWithProtocol, baseUrl, baseHost, baseProtocol } =
+  const { baseWithProtocol, baseHost, baseProtocol } =
     resolveApiBaseParts();
 
   // Handle host/path inputs from media library, e.g. "backend.devfy.codes/uploads/x.svg".
@@ -72,18 +69,24 @@ export function absoluteTenantApiUrl(
   const protocol = baseUrl.protocol || "http:";
   const port = baseUrl.port ? `:${baseUrl.port}` : "";
   const pathPart = trimmedPath.startsWith("/") ? trimmedPath : `/${trimmedPath}`;
+  const slug = (tenant.slug ?? "").trim().toLowerCase();
 
   const domain = (tenant.primaryDomain ?? "").trim().toLowerCase();
   if (domain) {
     const host = domain.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
     if (!host) return fallback;
+    const hostNoPort = host.split(":")[0]?.toLowerCase() ?? "";
+    const isPlainLocalhost =
+      hostNoPort === "localhost" || hostNoPort === "127.0.0.1";
+    if (isPlainLocalhost && slug) {
+      return `${protocol}//${slug}.localhost${port}${pathPart}`;
+    }
     if (host.includes(":")) {
       return `${protocol}//${host}${pathPart}`;
     }
     return `${protocol}//${host}${port}${pathPart}`;
   }
 
-  const slug = (tenant.slug ?? "").trim().toLowerCase();
   if (!slug) return fallback;
 
   const baseHostname = baseUrl.hostname.toLowerCase();

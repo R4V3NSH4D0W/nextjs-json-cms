@@ -3,6 +3,7 @@ import { useCurrentProject } from "@/components/providers/current-project-provid
 import {
   cmsApi,
   type CmsBlockType,
+  type CmsCustomToolDefinition,
   type CmsPageCreateBody,
   type CmsPageUpdateBody,
 } from "@/lib/cms/api";
@@ -253,6 +254,84 @@ export const useDeleteCmsLayout = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to delete layout");
+    },
+  });
+};
+
+// Custom layout tool hooks
+export const useCmsCustomTools = () => {
+  const { currentProject } = useCurrentProject();
+  return useQuery({
+    queryKey: ["cms-tools", currentProject?.slug],
+    queryFn: () => cmsApi.listCustomTools(currentProject!.slug),
+    enabled: !!currentProject,
+  });
+};
+
+export const useCmsCustomTool = (id: string) => {
+  const { currentProject } = useCurrentProject();
+  return useQuery({
+    queryKey: ["cms-tools", currentProject?.slug, id],
+    queryFn: () => cmsApi.getCustomTool(currentProject!.slug, id),
+    enabled: !!currentProject && !!id,
+  });
+};
+
+export const useCreateCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      description?: string | null;
+      definition: CmsCustomToolDefinition;
+    }) => cmsApi.createCustomTool(currentProject!.slug, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      toast.success("Tool created");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create tool");
+    },
+  });
+};
+
+export const useUpdateCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<{
+        name: string;
+        description: string | null;
+        definition: CmsCustomToolDefinition;
+      }>;
+    }) => cmsApi.updateCustomTool(currentProject!.slug, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      toast.success("Tool updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update tool");
+    },
+  });
+};
+
+export const useDeleteCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => cmsApi.deleteCustomTool(currentProject!.slug, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      toast.success("Tool deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete tool");
     },
   });
 };

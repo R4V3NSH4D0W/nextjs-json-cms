@@ -13,6 +13,19 @@ import type { NextRequest } from "next/server";
 
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
+function normalizeHost(rawHost: string) {
+  return rawHost.trim().toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "");
+}
+
+function tenantSlugFromHost(rawHost: string) {
+  const host = normalizeHost(rawHost);
+  const parts = host.split(".");
+  if (parts.length >= 2 && parts[parts.length - 1] === "localhost") {
+    return parts[0]?.trim() || "";
+  }
+  return "";
+}
+
 export async function proxy(request: NextRequest) {
   const requestId =
     request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -39,6 +52,17 @@ export async function proxy(request: NextRequest) {
   // Forward X-Request-Id on every request so server logs can correlate
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
+  const incomingHost =
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    request.nextUrl.host;
+  if (incomingHost) {
+    requestHeaders.set("x-forwarded-host", incomingHost);
+    const tenantSlug = tenantSlugFromHost(incomingHost);
+    if (tenantSlug) {
+      requestHeaders.set("x-tenant-slug", tenantSlug);
+    }
+  }
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
