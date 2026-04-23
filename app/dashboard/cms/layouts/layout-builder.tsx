@@ -334,7 +334,9 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
       if (pendingReferenceImageFile) {
         const slug = currentProject?.slug;
         if (!slug) {
-          throw new Error("Project context not identified. Cannot upload reference image.");
+          throw new Error(
+            "Project context not identified. Cannot upload reference image.",
+          );
         }
         ref = await uploadCmsReferenceImage(pendingReferenceImageFile, slug);
       }
@@ -558,7 +560,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
             />
           </div>
 
-          <div className="flex min-h-[min(50vh,420px)] min-w-0 w-full flex-1 flex-col lg:min-h-0 lg:aspect-[16/10] ">
+          <div className="flex min-h-[min(50vh,420px)] min-w-0 w-full flex-1 flex-col lg:min-h-0 lg:aspect-16/10 ">
             {referenceImageUrl || pendingReferencePreviewUrl ? (
               <div className="flex h-full min-h-[min(50vh,420px)] min-w-0 flex-col overflow-hidden rounded-xl border bg-card shadow-sm lg:min-h-0">
                 <div className="shrink-0 border-b bg-muted/50 px-3 py-2">
@@ -661,7 +663,9 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
                           onDefaultLinkChange={setBlockDefaultLink}
                           onRequiredChange={setBlockRequired}
                           onMoveBlock={moveBlock}
-                          customTools={customToolsQuery.data?.tools ?? []}
+                          customTools={Object.values(
+                            customToolsQuery.data?.tools ?? {},
+                          )}
                         />
                       ))}
                     </ul>
@@ -684,7 +688,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
             </p>
             <LayoutBuilderGroupedToolPalette
               onPick={addRoot}
-              customTools={customToolsQuery.data?.tools ?? []}
+              customTools={Object.values(customToolsQuery.data?.tools ?? {})}
               onPickCustom={addCustomRoot}
             />
           </div>

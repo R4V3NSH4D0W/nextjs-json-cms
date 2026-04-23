@@ -61,8 +61,9 @@ export interface SectionTool {
 }
 
 export interface CustomToolTemplateNode {
-  type: SectionBlockType;
+  type?: SectionBlockType;
   key?: string;
+  fields?: CustomToolTemplateNode[];
   children?: CustomToolTemplateNode[];
   defaultStr?: string;
   defaultLink?: { value?: string; href?: string; target?: string };
@@ -284,11 +285,17 @@ function normalizeCustomToolNode(
   }
   const raw = input as Record<string, unknown>;
   const type = typeof raw.type === "string" ? raw.type.trim() : "";
-  if (!isSectionBlockType(type)) {
+  const fields = Array.isArray(raw.fields)
+    ? raw.fields
+    : Array.isArray(raw.children)
+      ? raw.children
+      : undefined;
+  const inferredType = type || (fields ? "object" : "");
+  if (!isSectionBlockType(inferredType)) {
     throw new Error(`${path}.type is invalid`);
   }
 
-  const node: CustomToolTemplateNode = { type };
+  const node: CustomToolTemplateNode = { type: inferredType };
   if (typeof raw.key === "string" && raw.key.trim()) {
     node.key = raw.key.trim();
   }
@@ -314,11 +321,11 @@ function normalizeCustomToolNode(
     };
   }
 
-  if (type === "array" || type === "object") {
-    if (!Array.isArray(raw.children)) {
-      throw new Error(`${path}.children must be an array for ${type}`);
+  if (inferredType === "array" || inferredType === "object") {
+    if (!Array.isArray(fields)) {
+      throw new Error(`${path}.fields must be an array for ${inferredType}`);
     }
-    node.children = raw.children.map((child, index) =>
+    node.fields = fields.map((child, index) =>
       normalizeCustomToolNode(child, `${path}.children[${index}]`)
     );
   }
@@ -359,9 +366,10 @@ function instantiateTemplateNode(
     block.defaultStr = template.defaultStr;
   }
 
-  if ((template.type === "array" || template.type === "object") && template.children) {
+  const children = template.fields ?? template.children;
+  if ((template.type === "array" || template.type === "object") && children) {
     const childKeys = new Set<string>();
-    block.children = template.children.map((child) => {
+    block.children = children.map((child) => {
       const next = instantiateTemplateNode(child, depth + 1, childKeys);
       childKeys.add(next.key.trim());
       return next;

@@ -130,8 +130,9 @@ export interface CmsLayoutResponse {
 }
 
 export type CmsCustomToolDefinition = {
-  type: string;
+  type?: string;
   key?: string;
+  fields?: CmsCustomToolDefinition[];
   children?: CmsCustomToolDefinition[];
   defaultStr?: string;
   defaultLink?: { value?: string; href?: string; target?: string };
@@ -147,9 +148,11 @@ export interface CmsCustomTool {
   updatedAt: string;
 }
 
+export type CmsCustomToolsMap = Record<string, CmsCustomTool>;
+
 export interface CmsCustomToolsResponse {
   success: boolean;
-  tools: CmsCustomTool[];
+  tools: CmsCustomToolsMap;
 }
 
 export interface CmsCustomToolResponse {

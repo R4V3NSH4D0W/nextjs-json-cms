@@ -23,6 +23,7 @@ import {
   useUpdateCmsCustomTool,
 } from "@/hooks/use-cms";
 import type { CmsCustomTool, CmsCustomToolDefinition } from "@/lib/cms/api";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,29 +46,32 @@ import {
 } from "@/lib/cms/layout-builder";
 import { LayoutBuilderBlockBranch } from "@/components/cms/layout-builder/block-branch";
 import { LayoutBuilderGroupedToolPalette } from "@/components/cms/layout-builder/grouped-tool-palette";
-import { toast } from "sonner";
 
-function blockToDefinition(block: SectionBlock): CmsCustomToolDefinition {
-  const base: CmsCustomToolDefinition = {
-    type: block.type,
-    key: block.key,
-    ...(block.required ? { required: true } : {}),
-  };
+function blockToDefinition(
+  block: SectionBlock,
+  isRoot = false,
+): CmsCustomToolDefinition {
   if (block.type === "link") {
     return {
-      ...base,
+      type: "link",
+      key: block.key,
       ...(block.defaultLink ? { defaultLink: block.defaultLink } : {}),
+      ...(block.required ? { required: true } : {}),
     };
   }
   if (block.type === "array" || block.type === "object") {
-    return {
-      ...base,
-      children: block.children.map(blockToDefinition),
+    const definition: CmsCustomToolDefinition = {
+      key: block.key,
+      fields: block.children.map((child) => blockToDefinition(child)),
+      ...(block.required ? { required: true } : {}),
     };
+    return isRoot ? definition : { type: block.type, ...definition };
   }
   return {
-    ...base,
+    type: block.type,
+    key: block.key,
     ...(block.defaultStr !== undefined ? { defaultStr: block.defaultStr } : {}),
+    ...(block.required ? { required: true } : {}),
   };
 }
 
@@ -81,9 +85,10 @@ function initialStateFromTool(tool?: CmsCustomTool) {
     };
   }
 
-  if (tool.definition.type === "object" && Array.isArray(tool.definition.children)) {
+  const rootFields = tool.definition.fields ?? tool.definition.children;
+  if (Array.isArray(rootFields)) {
     const siblings = new Set<string>();
-    const blocks = tool.definition.children.map((child) => {
+    const blocks = rootFields.map((child) => {
       const node = createBlockFromCustomTool(child, 0, siblings);
       siblings.add(node.key.trim());
       return node;
@@ -119,11 +124,18 @@ function CmsToolBuilderForm({
   const createTool = useCreateCmsCustomTool();
   const updateTool = useUpdateCmsCustomTool();
 
-  const initialState = useMemo(() => initialStateFromTool(initialTool), [initialTool]);
+  const initialState = useMemo(
+    () => initialStateFromTool(initialTool),
+    [initialTool],
+  );
   const [name, setName] = useState(initialState.name);
   const [toolKey, setToolKey] = useState(initialState.toolKey);
+  const [isToolKeyManual, setIsToolKeyManual] = useState(isEdit);
   const [description, setDescription] = useState(initialState.description);
   const [blocks, setBlocks] = useState<SectionBlock[]>(initialState.blocks);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertDescription, setAlertDescription] = useState("");
 
   const isSaving = createTool.isPending || updateTool.isPending;
   const dndSensors = useSensors(
@@ -133,12 +145,18 @@ function CmsToolBuilderForm({
 
   const sortedTools = useMemo(
     () =>
-      [...(allToolsData?.tools ?? [])].sort(
+      Object.values(allToolsData?.tools ?? {}).sort(
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       ),
     [allToolsData?.tools],
   );
+
+  const showAlert = useCallback((title: string, description: string) => {
+    setAlertTitle(title);
+    setAlertDescription(description);
+    setAlertOpen(true);
+  }, []);
 
   const addRoot = useCallback((type: SectionBlockType) => {
     setBlocks((prev) => {
@@ -147,25 +165,31 @@ function CmsToolBuilderForm({
     });
   }, []);
 
-  const addCustomRoot = useCallback((tool: CmsCustomTool) => {
-    setBlocks((prev) => {
-      const keys = siblingKeysFrom(prev);
-      try {
-        return [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? `Tool "${tool.name}" is invalid: ${error.message}`
-            : `Tool "${tool.name}" is invalid.`,
-        );
-        return prev;
-      }
-    });
-  }, []);
+  const addCustomRoot = useCallback(
+    (tool: CmsCustomTool) => {
+      setBlocks((prev) => {
+        const keys = siblingKeysFrom(prev);
+        try {
+          return [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
+        } catch (error) {
+          showAlert(
+            `Tool "${tool.name}" is invalid`,
+            error instanceof Error
+              ? error.message
+              : "The custom tool definition could not be parsed.",
+          );
+          return prev;
+        }
+      });
+    },
+    [showAlert],
+  );
 
   const addIntoContainer = useCallback(
     (containerId: string, type: SectionBlockType, childDepth: number) => {
-      setBlocks((prev) => addChildToContainer(prev, containerId, type, childDepth));
+      setBlocks((prev) =>
+        addChildToContainer(prev, containerId, type, childDepth),
+      );
     },
     [],
   );
@@ -181,16 +205,17 @@ function CmsToolBuilderForm({
             childDepth,
           );
         } catch (error) {
-          toast.error(
+          showAlert(
+            `Tool "${tool.name}" is invalid`,
             error instanceof Error
-              ? `Tool "${tool.name}" is invalid: ${error.message}`
-              : `Tool "${tool.name}" is invalid.`,
+              ? error.message
+              : "The custom tool definition could not be parsed.",
           );
           return prev;
         }
       });
     },
-    [],
+    [showAlert],
   );
 
   const removeBlock = useCallback((id: string) => {
@@ -201,9 +226,12 @@ function CmsToolBuilderForm({
     setBlocks((prev) => updateBlockKey(prev, id, key));
   }, []);
 
-  const setBlockDefault = useCallback((id: string, value: string | undefined) => {
-    setBlocks((prev) => updateBlockDefault(prev, id, value));
-  }, []);
+  const setBlockDefault = useCallback(
+    (id: string, value: string | undefined) => {
+      setBlocks((prev) => updateBlockDefault(prev, id, value));
+    },
+    [],
+  );
 
   const setBlockDefaultLink = useCallback(
     (id: string, value: { value: string; href: string; target: string }) => {
@@ -231,18 +259,23 @@ function CmsToolBuilderForm({
   async function handleSave() {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      toast.error("Tool name is required.");
+      showAlert(
+        "Tool name is required",
+        "Enter a name before saving this tool.",
+      );
       return;
     }
     if (blocks.length === 0) {
-      toast.error("Add at least one field to the tool.");
+      showAlert(
+        "Add at least one field",
+        "This tool needs at least one field before it can be saved.",
+      );
       return;
     }
     const key = sanitizeSectionRootKeyInput(toolKey || name) || "group";
     const definition: CmsCustomToolDefinition = {
-      type: "object",
       key,
-      children: blocks.map(blockToDefinition),
+      fields: blocks.map((block) => blockToDefinition(block, true)),
     };
 
     if (isEdit && toolId) {
@@ -280,9 +313,17 @@ function CmsToolBuilderForm({
         </div>
         <p className="text-sm text-muted-foreground">
           Build grouped reusable fields like{" "}
-          <span className="font-mono">{`{ ${toolKey || "group"}: { ... } }`}</span>.
+          <span className="font-mono">{`{ ${toolKey || "group"}: { ... } }`}</span>
+          .
         </p>
       </div>
+
+      <AlertDialog
+        open={alertOpen}
+        title={alertTitle}
+        description={alertDescription}
+        onOpenChange={setAlertOpen}
+      />
 
       <Card>
         <CardHeader>
@@ -290,13 +331,15 @@ function CmsToolBuilderForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Name</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Name
+            </label>
             <Input
               value={name}
               onChange={(e) => {
                 const nextName = e.target.value;
                 setName(nextName);
-                if (!isEdit && toolKey.trim().length === 0) {
+                if (!isEdit && !isToolKeyManual) {
                   setToolKey(sanitizeSectionRootKeyInput(nextName));
                 }
               }}
@@ -309,9 +352,10 @@ function CmsToolBuilderForm({
             </label>
             <Input
               value={toolKey}
-              onChange={(e) =>
-                setToolKey(sanitizeSectionRootKeyInput(e.target.value))
-              }
+              onChange={(e) => {
+                setIsToolKeyManual(true);
+                setToolKey(sanitizeSectionRootKeyInput(e.target.value));
+              }}
               placeholder="hero_section"
             />
           </div>
@@ -327,7 +371,9 @@ function CmsToolBuilderForm({
           </div>
 
           <div className="space-y-2 rounded-md border p-3">
-            <p className="text-xs font-medium text-muted-foreground">Add fields</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Add fields
+            </p>
             <LayoutBuilderGroupedToolPalette
               onPick={addRoot}
               customTools={sortedTools}
@@ -337,7 +383,9 @@ function CmsToolBuilderForm({
 
           {blocks.length > 0 ? (
             <div className="space-y-2 rounded-md border p-3">
-              <p className="text-xs font-medium text-muted-foreground">Group fields</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                Group fields
+              </p>
               <DndContext
                 sensors={dndSensors}
                 collisionDetection={closestCenter}
@@ -378,8 +426,14 @@ function CmsToolBuilderForm({
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => void handleSave()} disabled={isSaving}>
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               {isEdit ? "Save changes" : "Create tool"}
             </Button>
           </div>
