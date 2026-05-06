@@ -40,6 +40,7 @@ import {
   Settings2,
   Trash2,
   RotateCcw,
+  CheckCircle2,
 } from "lucide-react";
 
 import { ProvisionProjectSheet } from "@/components/dashboard/admin/provision-project-sheet";
@@ -65,13 +66,19 @@ function normalizeDomain(value: string) {
   return trimmed.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
 }
 
+function isRecentlyCreated(createdAt: string, windowHours = 48) {
+  const createdMs = new Date(createdAt).getTime();
+  if (!Number.isFinite(createdMs)) return false;
+  return Date.now() - createdMs <= windowHours * 60 * 60 * 1000;
+}
+
 export default function AdminProjectsPage() {
   const queryClient = useQueryClient();
   const { isAdmin } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "archived"
-  >("all");
+  >("active");
   const [archivingProjectSlug, setArchivingProjectSlug] = useState<
     string | null
   >(null);
@@ -84,6 +91,22 @@ export default function AdminProjectsPage() {
   } | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleteAcknowledge, setDeleteAcknowledge] = useState(false);
+  const [dismissedSubdomainWarnings, setDismissedSubdomainWarnings] = useState<
+    string[]
+  >(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("dismissed-subdomain-warnings");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === "string");
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const { data, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => projectsApi.list(),
@@ -193,6 +216,19 @@ export default function AdminProjectsPage() {
     archiveProject.mutate(deleteDialogProject.slug);
   }
 
+  function dismissSubdomainWarning(projectSlug: string) {
+    const next = Array.from(new Set([...dismissedSubdomainWarnings, projectSlug]));
+    setDismissedSubdomainWarnings(next);
+    try {
+      window.localStorage.setItem(
+        "dismissed-subdomain-warnings",
+        JSON.stringify(next),
+      );
+    } catch {
+      // ignore storage failures
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8 pb-12">
       <div className="rounded-xl border border-border/70 bg-card px-5 py-5 md:px-6">
@@ -292,6 +328,12 @@ export default function AdminProjectsPage() {
               </div>
             ) : (
               filteredProjects.map((project) => (
+                (() => {
+                  const needsSubdomainSetup =
+                    project.status === "active" &&
+                    isRecentlyCreated(project.createdAt) &&
+                    !dismissedSubdomainWarnings.includes(project.slug);
+                  return (
                 <Card
                   key={project.id}
                   className="flex h-full flex-col overflow-hidden border-border/70 bg-card shadow-none transition-colors hover:border-primary/30"
@@ -317,6 +359,27 @@ export default function AdminProjectsPage() {
                       {project.description ||
                         "No description provided."}
                     </p>
+                    {needsSubdomainSetup ? (
+                      <div className="mt-4 rounded-md border border-rose-300/70 bg-rose-50/80 px-3 py-2 text-[11px] text-rose-800 dark:border-rose-800/50 dark:bg-rose-950/20 dark:text-rose-300">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold">Action required</p>
+                          <button
+                            type="button"
+                            onClick={() => dismissSubdomainWarning(project.slug)}
+                            className="inline-flex items-center gap-1 rounded-sm border border-rose-300/70 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50"
+                          >
+                            <CheckCircle2 className="size-3" />
+                            Mark checked
+                          </button>
+                        </div>
+                        <p className="mt-1">
+                          Create VPS subdomain:{" "}
+                          <code className="rounded bg-rose-100 px-1 py-0.5 dark:bg-rose-900/50">
+                            {`${project.slug}.${baseHost}`}
+                          </code>
+                        </p>
+                      </div>
+                    ) : null}
                     {project.primaryDomain && (
                       <div className="mt-4 flex w-fit items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1 text-[10px] text-muted-foreground">
                         <ExternalLink className="size-3" />
@@ -402,6 +465,8 @@ export default function AdminProjectsPage() {
                     </Button>
                   </CardFooter>
                 </Card>
+                  );
+                })()
               ))
             )}
           </div>
