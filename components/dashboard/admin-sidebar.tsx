@@ -23,7 +23,6 @@ import { useCurrentProject } from "@/components/providers/current-project-provid
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { cn } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/button";
-import { type FeatureKey } from "@/lib/projects/api";
 import {
   Sidebar,
   SidebarContent,
@@ -41,23 +40,21 @@ type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  feature?: FeatureKey;
 };
 
 const platformNav: NavItem[] = [
-  { href: "/admin", label: "Platform Overview", icon: LayoutDashboard },
-  { href: "/admin/projects", label: "All Projects", icon: FolderKanban },
+  { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/projects", label: "Projects", icon: FolderKanban },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/audit", label: "Audit Logs", icon: ShieldCheck },
+  { href: "/admin/audit", label: "Audit", icon: ShieldCheck },
 ];
 
 const projectMainNavBase: NavItem[] = [
-  { href: "/dashboard", label: "Project Overview", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   {
     href: "/dashboard/media",
     label: "Media",
     icon: Images,
-    feature: "cms.media.read",
   },
 ];
 
@@ -66,41 +63,35 @@ const cmsNav: NavItem[] = [
     href: "/dashboard/cms/pages",
     label: "Pages",
     icon: FileText,
-    feature: "cms.pages.read",
   },
   {
     href: "/dashboard/cms/layouts",
     label: "Layouts",
     icon: LayoutTemplate,
-    feature: "cms.layouts.read",
   },
   {
     href: "/dashboard/cms/tools",
     label: "Tools",
     icon: Hammer,
-    feature: "cms.layouts.read",
   },
   {
     href: "/dashboard/cms/navigation",
     label: "Navigation",
     icon: Menu,
-    feature: "cms.navigation.read",
   },
   {
     href: "/dashboard/cms/footer",
     label: "Footer",
     icon: PanelBottom,
-    feature: "cms.footer.read",
   },
   {
     href: "/dashboard/cms/announcements",
     label: "Announcements",
     icon: Megaphone,
-    feature: "cms.announcements.read",
   },
   {
     href: "/dashboard/settings",
-    label: "Project Settings",
+    label: "Settings",
     icon: Settings,
   },
 ];
@@ -116,7 +107,7 @@ export function AdminSidebar({
   mode?: "admin" | "dashboard";
 }) {
   const pathname = usePathname();
-  const { currentProject, currentAccess, hasService } = useCurrentProject();
+  const { currentProject, currentAccess } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
 
   const canManageProject = isAdmin || currentAccess?.canManageProject === true;
@@ -127,34 +118,28 @@ export function AdminSidebar({
       ]
     : projectMainNavBase;
 
-  const visibleProjectMainNav = projectMainNav.filter(
-    (item) => !item.feature || hasService(item.feature),
-  );
-  const visibleCmsNav = cmsNav.filter(
-    (item) => !item.feature || hasService(item.feature),
-  );
+  const visibleProjectMainNav = projectMainNav;
+  const visibleCmsNav = cmsNav;
 
   return (
     <Sidebar
       className="border-r border-sidebar-border bg-sidebar"
       collapsible="icon"
     >
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-3.5">
         <div className="flex items-center gap-2">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border bg-primary text-sm font-bold text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-primary/95 text-sm font-semibold text-primary-foreground"
             aria-hidden
           >
             {mode === "admin" ? "A" : "D"}
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {mode === "admin" ? "Platform Admin" : "Project Dashboard"}
+              {mode === "admin" ? "Admin" : "Dashboard"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {mode === "admin"
-                ? "System Core"
-                : (currentProject?.name ?? "No Project")}
+              {mode === "admin" ? "Control center" : (currentProject?.name ?? "No project")}
             </p>
           </div>
         </div>
@@ -162,8 +147,8 @@ export function AdminSidebar({
       <SidebarContent className="scrollbar-hide gap-0 p-2">
         {mode === "admin" ? (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-              Administration
+            <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
+              Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -194,7 +179,7 @@ export function AdminSidebar({
         ) : (
           <>
             <SidebarGroup>
-              <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
+              <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
                 Main
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -225,8 +210,8 @@ export function AdminSidebar({
             </SidebarGroup>
 
             <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-                Content & Settings
+              <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
+                Content
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -263,7 +248,7 @@ export function AdminSidebar({
             asChild
             variant="outline"
             size="sm"
-            className="w-full text-[10px] uppercase tracking-widest font-bold h-8"
+            className="h-8 w-full text-xs font-medium"
           >
             <Link href="/admin">Return to admin</Link>
           </Button>

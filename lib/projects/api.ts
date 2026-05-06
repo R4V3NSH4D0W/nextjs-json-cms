@@ -8,9 +8,7 @@ import type {
   ProjectUserDirectoryEntry,
   AdminUserSummary,
   AuditLogEntry,
-  ServiceGrantSummary,
-  ServiceKey,
-  AccessRequestSummary,
+  AdminNotificationsResponse,
 } from "./types";
 export * from "./types";
 
@@ -77,12 +75,12 @@ export const projectsApi = {
     ),
   addMember: (
     projectSlug: string,
-    body: { userId?: string; email?: string; role?: "manager" | "member" },
+    body: { userId?: string; email?: string; role?: "admin" },
   ) =>
     api.post<{
       success: true;
       user: { id: string; email: string; isAdmin: boolean };
-      membership: { id: string; createdAt: string; role: "manager" | "member" };
+      membership: { id: string; createdAt: string; role: "admin" };
     }>(`/api/v1/admin/projects/${projectSlug}/members`, body),
   listProjectUsers: (projectSlug: string, query?: string) =>
     api.get<{ success: true; users: ProjectUserDirectoryEntry[] }>(
@@ -104,6 +102,33 @@ export const projectsApi = {
     ),
   listAuditLogs: (params?: { performerId?: string; targetUserId?: string; projectSlug?: string; action?: string; limit?: number; page?: number }) =>
     api.get<{ success: true; logs: AuditLogEntry[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/api/v1/admin/audit", { params }),
+  listNotifications: (params?: { limit?: number }) =>
+    api.get<AdminNotificationsResponse>("/api/v1/admin/audit/notifications", {
+      params: { limit: params?.limit ?? 8 },
+      showErrorToast: false,
+    }),
+  markAllNotificationsRead: () =>
+    api.post<{ success: true }>("/api/v1/admin/audit/notifications/read-all", {}),
+  clearAllNotifications: () =>
+    api.post<{ success: true }>("/api/v1/admin/audit/notifications/clear-all", {}),
+  listProjectNotifications: (projectSlug: string, params?: { limit?: number }) =>
+    api.get<AdminNotificationsResponse>(
+      `/api/v1/admin/projects/${projectSlug}/notifications`,
+      {
+        params: { limit: params?.limit ?? 8 },
+        showErrorToast: false,
+      },
+    ),
+  markAllProjectNotificationsRead: (projectSlug: string) =>
+    api.post<{ success: true }>(
+      `/api/v1/admin/projects/${projectSlug}/notifications/read-all`,
+      {},
+    ),
+  clearAllProjectNotifications: (projectSlug: string) =>
+    api.post<{ success: true }>(
+      `/api/v1/admin/projects/${projectSlug}/notifications/clear-all`,
+      {},
+    ),
   getAuditLog: (logId: string) =>
     api.get<{ success: true; log: AuditLogEntry }>(`/api/v1/admin/audit/${logId}`),
   listUserActivity: (userId: string, params?: { limit?: number }) =>
@@ -119,78 +144,5 @@ export const projectsApi = {
   removeMember: (projectSlug: string, userId: string) =>
     api.delete<{ success: true }>(
       `/api/v1/admin/projects/${projectSlug}/members/${userId}`,
-    ),
-  listProjectServices: (projectSlug: string) =>
-    api.get<{ success: true; services: ServiceGrantSummary[] }>(
-      `/api/v1/admin/projects/${projectSlug}/services`,
-    ),
-  setProjectService: (
-    projectSlug: string,
-    serviceKey: ServiceKey,
-    enabled: boolean,
-  ) =>
-    api.put<{
-      success: true;
-      grant: {
-        id: string;
-        projectId: string;
-        serviceKey: ServiceKey;
-        enabled: boolean;
-        updatedAt: string;
-      };
-    }>(`/api/v1/admin/projects/${projectSlug}/services/${serviceKey}`, { enabled }),
-  grantMemberServices: (
-    projectSlug: string,
-    userId: string,
-    serviceKeys: ServiceKey[],
-  ) =>
-    api.post<{ success: true; grants: Array<{ serviceKey: ServiceKey }> }>(
-      `/api/v1/admin/projects/${projectSlug}/members/${userId}/services`,
-      { serviceKeys },
-    ),
-  revokeMemberService: (
-    projectSlug: string,
-    userId: string,
-    serviceKey: ServiceKey,
-  ) =>
-    api.delete<{ success: true }>(
-      `/api/v1/admin/projects/${projectSlug}/members/${userId}/services/${serviceKey}`,
-    ),
-  submitAccessRequest: (
-    projectSlug: string,
-    body: { serviceKeys: ServiceKey[]; note?: string },
-  ) =>
-    api.post<{ success: true; request: AccessRequestSummary }>(
-      `/api/v1/admin/projects/${projectSlug}/access-requests`,
-      body,
-    ),
-  listOwnAccessRequests: () =>
-    api.get<{ success: true; requests: AccessRequestSummary[] }>(
-      "/api/v1/admin/projects/access-requests/mine",
-    ),
-  cancelOwnAccessRequest: (requestId: string) =>
-    api.delete<{ success: true }>(
-      `/api/v1/admin/projects/access-requests/mine/${requestId}`,
-    ),
-  listPendingAccessRequests: (projectSlug?: string) =>
-    api.get<{ success: true; requests: AccessRequestSummary[] }>(
-      "/api/v1/admin/projects/access-requests/pending",
-      {
-        params: {
-          projectSlug,
-        },
-      },
-    ),
-  reviewAccessRequest: (
-    requestId: string,
-    body: {
-      decision: "approve" | "deny";
-      approvedServiceKeys?: ServiceKey[];
-      reviewNote?: string;
-    },
-  ) =>
-    api.post<{ success: true; request: AccessRequestSummary }>(
-      `/api/v1/admin/projects/access-requests/${requestId}/review`,
-      body,
     ),
 };

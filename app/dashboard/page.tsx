@@ -22,6 +22,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+function resolveBaseHost() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+  if (!apiUrl) return "localhost";
+  try {
+    const normalized = /^https?:\/\//i.test(apiUrl) ? apiUrl : `https://${apiUrl}`;
+    const host = new URL(normalized).hostname.toLowerCase();
+    return host === "127.0.0.1" ? "localhost" : host || "localhost";
+  } catch {
+    return "localhost";
+  }
+}
+
+function normalizeDomain(value: string | null) {
+  if (!value) return null;
+  return value.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+}
+
 async function fetchCount(path: string, cookieHeader: string): Promise<number> {
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000";
@@ -61,6 +78,7 @@ export default async function DashboardHomePage() {
   const activeProjects = projects.filter(
     (project) => project.status === "active",
   );
+  const baseHost = resolveBaseHost();
   const currentProject = await getCurrentProjectFromRequest(projects);
 
   if (!currentProject) {
@@ -115,6 +133,8 @@ export default async function DashboardHomePage() {
       cookieHeader,
     ),
   ]);
+  const requiredSubdomain = `${currentProject.slug}.${baseHost}`;
+  const customDomain = normalizeDomain(currentProject.primaryDomain);
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -262,6 +282,23 @@ export default async function DashboardHomePage() {
               the public content API under the project slug{" "}
               <strong>{currentProject.slug}</strong>.
             </p>
+            <div className="rounded-md border border-border/60 bg-background px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Required VPS Subdomain
+              </p>
+              <code className="mt-1 block text-xs font-medium">{requiredSubdomain}</code>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Create this subdomain in VPS DNS and point it to your app server.
+              </p>
+            </div>
+            {customDomain ? (
+              <div className="rounded-md border border-border/60 bg-background px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Custom Domain (Optional)
+                </p>
+                <code className="mt-1 block text-xs font-medium">{customDomain}</code>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>

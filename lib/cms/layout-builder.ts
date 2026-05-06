@@ -342,15 +342,16 @@ function instantiateTemplateNode(
   depth: number,
   siblingKeys: Set<string>
 ): SectionBlock {
+  const templateType: SectionBlockType = template.type ?? "object";
   const templateKey = template.key?.trim() ?? "";
   const baseKey =
     templateKey.length > 0
       ? uniqueKey(templateKey, siblingKeys)
-      : defaultKeyForType(template.type, depth, siblingKeys);
+      : defaultKeyForType(templateType, depth, siblingKeys);
 
   const block: SectionBlock = {
     id: crypto.randomUUID(),
-    type: template.type,
+    type: templateType,
     key: baseKey,
     children: [],
     ...(template.required ? { required: true } : {}),

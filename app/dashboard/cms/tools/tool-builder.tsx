@@ -46,6 +46,7 @@ import {
 } from "@/lib/cms/layout-builder";
 import { LayoutBuilderBlockBranch } from "@/components/cms/layout-builder/block-branch";
 import { LayoutBuilderGroupedToolPalette } from "@/components/cms/layout-builder/grouped-tool-palette";
+import { CmsEditorHeader } from "@/components/cms/cms-editor-header";
 
 function blockToDefinition(
   block: SectionBlock,
@@ -304,19 +305,12 @@ function CmsToolBuilderForm({
         <Link href="/dashboard/cms/tools">← Tools</Link>
       </Button>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Hammer className="h-6 w-6 text-muted-foreground" aria-hidden />
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isEdit ? "Edit Tool" : "Create Tool"}
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Build grouped reusable fields like{" "}
-          <span className="font-mono">{`{ ${toolKey || "group"}: { ... } }`}</span>
-          .
-        </p>
-      </div>
+      <CmsEditorHeader
+        icon={Hammer}
+        title={isEdit ? "Edit Tool" : "Create Tool"}
+        description={`Build grouped reusable fields like { ${toolKey || "group"}: { ... } }.`}
+        badge={isEdit ? "Editing" : "New"}
+      />
 
       <AlertDialog
         open={alertOpen}

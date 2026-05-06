@@ -57,7 +57,7 @@ export type ServiceGrantSummary = {
 
 export type ProjectMember = {
   createdAt: string;
-  role: "manager" | "member";
+  role: "admin";
   features: FeatureKey[];
   user: {
     id: string;
@@ -85,7 +85,7 @@ export type ProjectAccessSummary = {
   };
   hasProjectAccess: boolean;
   canManageProject: boolean;
-  memberRole: "manager" | "member" | null;
+  memberRole: "admin" | null;
   features: FeatureKey[];
 };
 
@@ -130,4 +130,21 @@ export type AuditLogEntry = {
   metadata: Record<string, unknown>;
   requestId: string | null;
   createdAt: string;
+};
+
+export type AdminNotificationItem = {
+  id: string;
+  action: string;
+  projectSlug: string | null;
+  performerEmail: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+  unread: boolean;
+};
+
+export type AdminNotificationsResponse = {
+  success: true;
+  lastReadAt: string | null;
+  unreadCount: number;
+  notifications: AdminNotificationItem[];
 };

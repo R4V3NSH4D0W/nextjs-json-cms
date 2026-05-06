@@ -107,7 +107,7 @@ function Page() {
         }
         description="This cannot be undone."
         confirmLabel="Delete page"
-        confirmVariant="destructive"
+        destructive
         onConfirm={() => {
           if (!deleteTarget) return;
           deletePage.mutate(deleteTarget.id);

@@ -41,8 +41,8 @@ export function AdminDashboardShell({
               <AdminSidebar mode={mode} />
               <div className="flex min-w-0 flex-1 flex-col">
                 <AdminHeader userEmail={userEmail} mode={mode} />
-                <main className="flex-1 overflow-auto bg-muted/40 p-4 md:p-6 lg:p-8 dark:bg-muted/25">
-                  {children}
+                <main className="flex-1 overflow-auto bg-background/80 px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8">
+                  <div className="mx-auto w-full max-w-7xl">{children}</div>
                 </main>
               </div>
             </div>

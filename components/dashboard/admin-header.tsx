@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, PanelLeft, ShieldCheck } from "lucide-react";
+import { Bell, ChevronDown, ExternalLink, LogOut, PanelLeft, ShieldCheck } from "lucide-react";
 
 import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { logoutAction } from "@/lib/auth/actions";
+import { useMutation, useQuery, useQueryClient } from "@/lib/shared/react-query";
+import { projectsApi } from "@/lib/projects/api";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/shared/utils";
 
 export function AdminHeader({
   userEmail,
@@ -25,51 +29,245 @@ export function AdminHeader({
   userEmail: string;
   mode?: "admin" | "dashboard";
 }) {
+  const queryClient = useQueryClient();
   const { open } = useSidebar();
+  const isMobile = useIsMobile();
   const { currentProject, projects } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
+  const notificationAudience =
+    mode === "admin" ? "admin" : currentProject ? "project" : "none";
+  const notificationsQuery = useQuery({
+    queryKey:
+      notificationAudience === "project"
+        ? ["project-notifications", currentProject?.slug]
+        : ["admin-notifications", "project-created"],
+    queryFn: () => {
+      if (notificationAudience === "project" && currentProject?.slug) {
+        return projectsApi.listProjectNotifications(currentProject.slug, {
+          limit: 8,
+        });
+      }
+      return projectsApi.listNotifications({ limit: 8 });
+    },
+    enabled: notificationAudience !== "none",
+    refetchInterval: 30_000,
+  });
   const initial = userEmail.slice(0, 2).toUpperCase();
   const activeProjects = projects.filter(
     (project) => project.status === "active",
   );
+  const notifications = notificationsQuery.data?.notifications ?? [];
+  const unreadCount = notificationsQuery.data?.unreadCount ?? 0;
+  const hasNotifications = notifications.length > 0;
+  const markAllRead = useMutation({
+    mutationFn: () => {
+      if (notificationAudience === "project" && currentProject?.slug) {
+        return projectsApi.markAllProjectNotificationsRead(currentProject.slug);
+      }
+      return projectsApi.markAllNotificationsRead();
+    },
+    onSuccess: async () => {
+      if (notificationAudience === "project" && currentProject?.slug) {
+        await queryClient.invalidateQueries({
+          queryKey: ["project-notifications", currentProject.slug],
+        });
+      } else {
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-notifications", "project-created"],
+        });
+      }
+    },
+  });
+  const clearAll = useMutation({
+    mutationFn: () => {
+      if (notificationAudience === "project" && currentProject?.slug) {
+        return projectsApi.clearAllProjectNotifications(currentProject.slug);
+      }
+      return projectsApi.clearAllNotifications();
+    },
+    onSuccess: async () => {
+      if (notificationAudience === "project" && currentProject?.slug) {
+        await queryClient.invalidateQueries({
+          queryKey: ["project-notifications", currentProject.slug],
+        });
+      } else {
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-notifications", "project-created"],
+        });
+      }
+    },
+  });
+  const baseHost = (() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+    if (!apiUrl) return "localhost";
+    try {
+      const normalized = /^https?:\/\//i.test(apiUrl) ? apiUrl : `https://${apiUrl}`;
+      const url = new URL(normalized);
+      const host = url.hostname.toLowerCase();
+      return host === "127.0.0.1" ? "localhost" : host || "localhost";
+    } catch {
+      return "localhost";
+    }
+  })();
+  const formatWhen = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-4 lg:px-6">
-      {!open && (
-        <SidebarTrigger className="-ml-1">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 lg:px-6">
+      {(isMobile || !open) && (
+        <SidebarTrigger className="-ml-1 size-9 rounded-md border border-border/60">
           <PanelLeft className="size-5" />
           <span className="sr-only">Toggle sidebar</span>
         </SidebarTrigger>
       )}
       <div className="flex flex-1 items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-muted-foreground">
+        <div className="min-w-0 flex items-center gap-2">
+          <p className="truncate text-sm font-medium text-muted-foreground sm:text-[15px]">
             {mode === "admin"
-              ? "Platform Administration"
+              ? "Admin workspace"
               : currentProject
                 ? `Project: ${currentProject.name}`
                 : "Dashboard"}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {notificationAudience !== "none" ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative size-9 rounded-md border border-border/40 hover:bg-muted/60"
+                  aria-label="Open notifications"
+                >
+                  <Bell className="size-4.5" />
+                  {unreadCount > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  ) : null}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-80 p-2 shadow-xl border-border/50"
+              >
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <DropdownMenuLabel className="p-0 text-xs font-semibold">
+                    {notificationAudience === "admin"
+                      ? "Admin notifications"
+                      : "Project notifications"}
+                  </DropdownMenuLabel>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => markAllRead.mutate()}
+                      disabled={markAllRead.isPending || unreadCount === 0}
+                    >
+                      {markAllRead.isPending ? "Marking..." : "Mark read"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[11px] text-destructive"
+                      onClick={() => clearAll.mutate()}
+                      disabled={clearAll.isPending || !hasNotifications}
+                    >
+                      {clearAll.isPending ? "Clearing..." : "Clear all"}
+                    </Button>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <div className="max-h-80 space-y-1 overflow-auto p-1">
+                  {!hasNotifications ? (
+                    <p className="px-2 py-3 text-xs text-muted-foreground">
+                      {notificationAudience === "admin"
+                        ? "No new project creation events yet."
+                        : "No new project activity yet."}
+                    </p>
+                  ) : (
+                    notifications.map((item) => {
+                      const domain =
+                        typeof item.metadata?.primaryDomain === "string"
+                          ? item.metadata.primaryDomain
+                          : null;
+                      const projectSlug = item.projectSlug ?? "project";
+                      return (
+                        <Link
+                          key={item.id}
+                          href={
+                            notificationAudience === "admin"
+                              ? `/dashboard/projects/${encodeURIComponent(projectSlug)}`
+                              : `/dashboard/projects/${encodeURIComponent(projectSlug)}`
+                          }
+                          className={cn(
+                            "block rounded-md border px-2 py-2 hover:border-border hover:bg-muted/50",
+                            item.unread
+                              ? "border-primary/25 bg-primary/5"
+                              : "border-transparent",
+                          )}
+                        >
+                          <p className="text-xs font-medium">
+                            {notificationAudience === "admin"
+                              ? `New project: ${String(item.metadata?.name ?? item.projectSlug ?? "Unnamed")}`
+                              : `${String(item.action).replaceAll("_", " ").toLowerCase()}`}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            Subdomain: {domain || `${projectSlug}.${baseHost}`}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {item.unread ? "Unread" : "Read"} • by {item.performerEmail} • {formatWhen(item.createdAt)}
+                          </p>
+                        </Link>
+                      );
+                    })
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="rounded-md">
+                  <Link
+                    href={
+                      notificationAudience === "admin"
+                        ? "/admin/audit"
+                        : currentProject
+                          ? `/dashboard/projects/${encodeURIComponent(currentProject.slug)}`
+                          : "/dashboard"
+                    }
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    View all activity
+                    <ExternalLink className="size-3.5" />
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+
           {mode === "dashboard" && activeProjects.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden md:inline-flex gap-2 border-border/60 hover:bg-muted font-medium"
+                  className="hidden gap-2 border-border/60 font-medium md:inline-flex"
                 >
                   {currentProject?.name ?? "Select Project"}
-                  <PanelLeft className="size-3.5 -rotate-90 opacity-50" />
+                  <ChevronDown className="size-3.5 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 className="w-64 p-2 shadow-xl border-border/50"
               >
-                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest pb-2 px-2">
-                  Switch Workspace
+                <DropdownMenuLabel className="px-2 pb-2 text-xs font-medium text-muted-foreground">
+                  Switch project
                 </DropdownMenuLabel>
                 {activeProjects.map((project) => (
                   <DropdownMenuItem
@@ -97,9 +295,9 @@ export function AdminHeader({
                     >
                       <Link
                         href="/admin/projects"
-                        className="font-bold text-xs uppercase tracking-tight"
+                        className="text-xs font-medium"
                       >
-                        Manage All Projects
+                        Manage projects
                       </Link>
                     </DropdownMenuItem>
                   </>
@@ -112,19 +310,19 @@ export function AdminHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-9 gap-2 rounded-sm px-2 hover:bg-muted/50 transition-colors"
+                className="relative h-10 gap-2 rounded-lg border border-border/40 px-2.5 hover:bg-muted/60"
               >
-                <Avatar className="size-8 rounded-sm border border-border/50">
-                  <AvatarFallback className="rounded-sm bg-primary/10 text-xs font-bold text-primary uppercase">
+                <Avatar className="size-8 rounded-md border border-border/50">
+                  <AvatarFallback className="rounded-md bg-primary/10 text-xs font-semibold text-primary uppercase">
                     {initial}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden flex-col items-start gap-0.5 text-left md:flex">
-                  <span className="max-w-35 truncate text-xs font-semibold leading-none">
+                <div className="hidden min-w-0 flex-col items-start gap-0.5 text-left sm:flex">
+                  <span className="max-w-44 truncate text-xs font-semibold leading-none">
                     {userEmail}
                   </span>
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
-                    {isAdmin ? "Super Admin" : "Project Member"}
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {isAdmin ? "Super admin" : "Project admin"}
                   </span>
                 </div>
               </Button>
@@ -135,8 +333,8 @@ export function AdminHeader({
             >
               <DropdownMenuLabel className="font-normal p-2">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest leading-none">
-                    Session Profile
+                  <span className="text-[10px] font-medium text-muted-foreground leading-none">
+                    Signed in as
                   </span>
                   <span className="truncate text-sm font-semibold pt-1">
                     {userEmail}

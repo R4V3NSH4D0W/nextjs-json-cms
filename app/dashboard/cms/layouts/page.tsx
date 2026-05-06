@@ -73,7 +73,7 @@ function LayoutsPageContent() {
         }
         description="Pages using it will have the layout unset."
         confirmLabel="Delete layout"
-        confirmVariant="destructive"
+        destructive
         onConfirm={() => {
           if (!deleteTarget) return;
           deleteLayout.mutate(deleteTarget.id);

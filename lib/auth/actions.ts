@@ -12,7 +12,7 @@ function getApiUrl(): string {
 
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/dashboard";
+    return "";
   }
   return raw;
 }
@@ -41,7 +41,11 @@ export async function loginAction(
     body: JSON.stringify({ email, password }),
   });
 
-  const data = (await res.json()) as { success: boolean; message?: string };
+  const data = (await res.json()) as {
+    success: boolean;
+    message?: string;
+    user?: { id: string; email: string; isAdmin: boolean };
+  };
 
   if (!res.ok || !data.success) {
     return { error: data.message ?? "Invalid email or password." };
@@ -72,7 +76,10 @@ export async function loginAction(
     }
   }
 
-  redirect(callbackUrl);
+  if (data.user?.isAdmin) {
+    redirect("/admin");
+  }
+  redirect(callbackUrl || "/dashboard");
 }
 
 export async function logoutAction(): Promise<void> {

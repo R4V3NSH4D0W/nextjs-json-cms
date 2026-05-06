@@ -7,7 +7,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@/lib/shared/react-query";
-import { type ServiceKey, projectsApi } from "@/lib/projects/api";
+import { projectsApi } from "@/lib/projects/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,18 +36,34 @@ import {
   ExternalLink,
   ShieldCheck,
   Search,
-  LayoutGrid,
   Activity,
-  Users,
   Settings2,
-  Clock,
-  ChevronRight,
   Trash2,
   RotateCcw,
 } from "lucide-react";
 
 import { ProvisionProjectSheet } from "@/components/dashboard/admin/provision-project-sheet";
 import { cn } from "@/lib/shared/utils";
+
+function resolveBaseHostForSubdomain() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+  if (!apiUrl) return "localhost";
+  try {
+    const normalized = /^https?:\/\//i.test(apiUrl) ? apiUrl : `https://${apiUrl}`;
+    const url = new URL(normalized);
+    const host = url.hostname.toLowerCase();
+    if (host === "127.0.0.1") return "localhost";
+    return host || "localhost";
+  } catch {
+    return "localhost";
+  }
+}
+
+function normalizeDomain(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+}
 
 export default function AdminProjectsPage() {
   const queryClient = useQueryClient();
@@ -69,43 +84,9 @@ export default function AdminProjectsPage() {
   } | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleteAcknowledge, setDeleteAcknowledge] = useState(false);
-  const [approveSelectionByRequest, setApproveSelectionByRequest] = useState<
-    Record<string, ServiceKey[]>
-  >({});
-
   const { data, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => projectsApi.list(),
-  });
-
-  const pendingRequests = useQuery({
-    queryKey: ["access-requests", "pending"],
-    queryFn: () => projectsApi.listPendingAccessRequests(),
-    enabled: isAdmin,
-  });
-
-  const reviewRequest = useMutation({
-    mutationFn: ({
-      requestId,
-      decision,
-      approvedServiceKeys,
-    }: {
-      requestId: string;
-      decision: "approve" | "deny";
-      approvedServiceKeys?: ServiceKey[];
-    }) =>
-      projectsApi.reviewAccessRequest(requestId, {
-        decision,
-        approvedServiceKeys,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["access-requests", "pending"],
-      });
-      await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Access request updated");
-    },
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const archiveProject = useMutation({
@@ -115,9 +96,6 @@ export default function AdminProjectsPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["access-requests", "pending"],
-      });
       setDeleteDialogProject(null);
       setDeleteConfirmName("");
       setDeleteAcknowledge(false);
@@ -134,9 +112,6 @@ export default function AdminProjectsPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["access-requests", "pending"],
-      });
       toast.success("Project restored successfully");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -170,13 +145,13 @@ export default function AdminProjectsPage() {
         p.description?.toLowerCase().includes(q),
     );
   }, [allProjects, searchQuery, statusFilter]);
+  const baseHost = resolveBaseHostForSubdomain();
 
   // Stats calculation
   const stats = useMemo(() => {
     const total = allProjects.length;
     const active = allProjects.filter((p) => p.status === "active").length;
-    const pending = pendingRequests.data?.requests?.length ?? 0;
-
+    const archived = allProjects.filter((p) => p.status === "archived").length;
     return [
       {
         label: "Total Projects",
@@ -191,29 +166,19 @@ export default function AdminProjectsPage() {
         color: "text-emerald-500",
       },
       {
-        label: "Security Gates",
-        value: pending,
+        label: "Access Model",
+        value: isAdmin ? "Centralized" : "Scoped",
         icon: ShieldCheck,
         color: "text-amber-500",
       },
       {
-        label: "Provisioned Users",
-        value: "Unified",
-        icon: Users,
-        color: "text-blue-500",
+        label: "Archived",
+        value: archived,
+        icon: Activity,
+        color: "text-muted-foreground",
       },
     ];
-  }, [allProjects, pendingRequests.data?.requests?.length]);
-
-  function toggleApproveService(requestId: string, serviceKey: ServiceKey) {
-    setApproveSelectionByRequest((prev) => {
-      const current = prev[requestId] ?? [];
-      const next = current.includes(serviceKey)
-        ? current.filter((key) => key !== serviceKey)
-        : [...current, serviceKey];
-      return { ...prev, [requestId]: next };
-    });
-  }
+  }, [allProjects, isAdmin]);
 
   function openDeleteDialog(project: { slug: string; name: string }) {
     setDeleteDialogProject(project);
@@ -230,54 +195,36 @@ export default function AdminProjectsPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-12">
-      {/* Header section */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="bg-primary/5 text-primary border-primary/20 font-semibold h-6 px-2"
-          >
-            Infrastructure Dashboard
-          </Badge>
-          <div className="size-1 rounded-full bg-border" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Admin Domain
-          </p>
-        </div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground/90">
-              Project Management
+      <div className="rounded-xl border border-border/70 bg-card px-5 py-5 md:px-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+              Projects
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-              Orchestrate isolated tenant environments and govern cross-project
-              security access.
+            <p className="text-sm text-muted-foreground">
+              Manage project workspaces, statuses, and access.
             </p>
           </div>
-          <ProvisionProjectSheet />
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="h-6 px-2 text-xs">
+              Admin
+            </Badge>
+            <ProvisionProjectSheet />
+          </div>
         </div>
       </div>
 
-      {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <Card
-            key={i}
-            className="border-border/50 bg-card/40 backdrop-blur-sm shadow-sm transition-all hover:shadow-md hover:border-primary/20 group"
-          >
+          <Card key={i} className="border-border/70 bg-card shadow-none">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
                   {stat.label}
                 </p>
-                <p className="text-2xl font-bold tabular-nums">{stat.value}</p>
+                <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
               </div>
-              <div
-                className={cn(
-                  "p-2 rounded-lg bg-background/80 shadow-inner group-hover:scale-110 transition-transform",
-                  stat.color,
-                )}
-              >
+              <div className={cn("rounded-md border bg-background p-2", stat.color)}>
                 <stat.icon className="size-5" />
               </div>
             </CardContent>
@@ -285,27 +232,27 @@ export default function AdminProjectsPage() {
         ))}
       </div>
 
-      <div className="space-y-6">
-        {/* Search and control bar */}
+      <div className="space-y-5">
         <Tabs
           value={statusFilter}
           onValueChange={(value) =>
             setStatusFilter(value as "all" | "active" | "archived")
           }
-          className="space-y-6"
+          className="space-y-5"
         >
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-full flex-1 md:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, slug or metadata..."
+                placeholder="Search by name, slug, or description"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-background/50 border-border/60 focus:bg-background transition-colors"
+                className="h-9 pl-9"
+                aria-label="Search projects"
               />
             </div>
 
-            <TabsList className="h-auto flex-wrap gap-1 rounded-lg border border-border/50 bg-muted/30 p-1">
+            <TabsList className="h-auto flex-wrap gap-1 rounded-lg border border-border/60 bg-background p-1">
               <TabsTrigger value="all" className="h-8 px-3 text-xs">
                 All ({projectCounts.all})
               </TabsTrigger>
@@ -316,23 +263,6 @@ export default function AdminProjectsPage() {
                 Archived ({projectCounts.archived})
               </TabsTrigger>
             </TabsList>
-
-            <div className="hidden items-center gap-1.5 rounded-lg border border-border/50 bg-muted/40 p-1 sm:flex">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 bg-background shadow-sm border border-border/50"
-              >
-                <LayoutGrid className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground opacity-50"
-              >
-                <Settings2 className="size-4" />
-              </Button>
-            </div>
           </div>
 
           {statusFilter === "archived" && filteredProjects.length > 0 ? (
@@ -342,53 +272,39 @@ export default function AdminProjectsPage() {
             </div>
           ) : null}
 
-          {/* Project Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <Card
                   key={i}
-                  className="h-48 animate-pulse border-border/50 bg-card/20"
+                  className="h-48 animate-pulse border-border/60 bg-card"
                 />
               ))
             ) : filteredProjects.length === 0 ? (
-              <div className="col-span-full py-20 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-border bg-muted/20">
-                <div className="size-12 rounded-full bg-background flex items-center justify-center text-muted-foreground/30 mb-4 border border-border">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-18 text-center">
+                <div className="mb-4 flex size-12 items-center justify-center rounded-full border border-border bg-background text-muted-foreground/40">
                   <FolderKanban className="size-6" />
                 </div>
-                <h3 className="text-sm font-bold">No instances found</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                  Your platform is currently dormant. Use the &quot;Provision
-                  Project&quot; button above to deploy your first tenant.
+                <h3 className="text-sm font-semibold">No projects found</h3>
+                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                  Create a new project to get started.
                 </p>
               </div>
             ) : (
               filteredProjects.map((project) => (
                 <Card
                   key={project.id}
-                  className="group relative border-border/50 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 overflow-hidden flex flex-col h-full"
+                  className="flex h-full flex-col overflow-hidden border-border/70 bg-card shadow-none transition-colors hover:border-primary/30"
                 >
-                  <div className="absolute top-0 right-0 p-4 opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "font-mono text-[10px] uppercase tracking-tighter",
-                        project.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {project.status}
-                    </Badge>
-                  </div>
+               
 
                   <CardHeader className="pb-0">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 pr-12">
-                        <CardTitle className="text-base font-bold truncate group-hover:text-primary transition-colors">
+                        <CardTitle className="truncate text-base font-semibold">
                           {project.name}
                         </CardTitle>
-                        <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
                           <div className="size-1 rounded-full bg-primary/40" />
                           {project.slug}
                         </div>
@@ -399,14 +315,18 @@ export default function AdminProjectsPage() {
                   <CardContent className="pt-4 flex-1">
                     <p className="min-h-12 text-xs text-muted-foreground line-clamp-3 leading-relaxed">
                       {project.description ||
-                        "No mission-specific context provided for this tenant instance."}
+                        "No description provided."}
                     </p>
                     {project.primaryDomain && (
-                      <div className="mt-4 flex items-center gap-2 text-[10px] font-medium text-muted-foreground/80 bg-muted/30 px-2.5 py-1 rounded-md border border-border/30 w-fit">
+                      <div className="mt-4 flex w-fit items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1 text-[10px] text-muted-foreground">
                         <ExternalLink className="size-3" />
-                        {project.primaryDomain}
+                        Domain: {normalizeDomain(project.primaryDomain)}
                       </div>
                     )}
+                    <div className="mt-2 flex w-fit items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1 text-[10px] text-muted-foreground">
+                      <ExternalLink className="size-3" />
+                      Subdomain: {`${project.slug}.${baseHost}`}
+                    </div>
                   </CardContent>
 
                   <CardFooter className="pt-4 mt-auto border-t border-border/30 flex gap-2">
@@ -415,19 +335,19 @@ export default function AdminProjectsPage() {
                         variant="default"
                         size="sm"
                         asChild
-                        className="flex-1 h-9 font-bold"
+                        className="h-9 flex-1 font-medium"
                       >
                         <Link
                           href={`/dashboard/projects/select?slug=${encodeURIComponent(project.slug)}&redirect=/dashboard`}
                         >
-                          Launch Console
+                          Open dashboard
                         </Link>
                       </Button>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 h-9 border-emerald-200/80 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100"
+                        className="h-9 flex-1 border-emerald-200/80 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100"
                         onClick={() => restoreProject.mutate(project.slug)}
                         disabled={
                           restoreProject.isPending || archiveProject.isPending
@@ -439,7 +359,6 @@ export default function AdminProjectsPage() {
                         ) : (
                           <>
                             <RotateCcw className="mr-1 size-3.5" /> Restore
-                            Project
                           </>
                         )}
                       </Button>
@@ -450,6 +369,7 @@ export default function AdminProjectsPage() {
                       asChild={project.status === "active"}
                       className="size-9 h-9 border-border/50 hover:bg-background transition-colors"
                       disabled={project.status !== "active"}
+                      aria-label={`Open settings for ${project.name}`}
                     >
                       {project.status === "active" ? (
                         <Link href={`/dashboard/projects/${project.slug}`}>
@@ -501,8 +421,7 @@ export default function AdminProjectsPage() {
             <DialogHeader>
               <DialogTitle>Archive Project</DialogTitle>
               <DialogDescription>
-                This action can be reverted by an admin using Restore. To
-                prevent mistakes, confirm the project details below.
+                You can restore this project later from the archived list.
               </DialogDescription>
             </DialogHeader>
 
@@ -510,7 +429,7 @@ export default function AdminProjectsPage() {
               <div className="space-y-4">
                 <div className="rounded-md border border-rose-200/70 bg-rose-50/70 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">
-                    Project to archive
+                    Project
                   </p>
                   <p className="mt-1 text-sm font-bold text-foreground">
                     {deleteDialogProject.name}
@@ -546,8 +465,7 @@ export default function AdminProjectsPage() {
                     className="mt-0.5"
                   />
                   <span className="text-xs leading-relaxed text-muted-foreground">
-                    I understand this project will be archived and hidden from
-                    active use until restored.
+                    I understand this project will be moved to archived status.
                   </span>
                 </label>
               </div>
@@ -576,127 +494,6 @@ export default function AdminProjectsPage() {
           </DialogContent>
         </Dialog>
       </div>
-
-      {/* Access requests section */}
-      {(pendingRequests.data?.requests ?? []).length > 0 && (
-        <div className="mt-8 space-y-4">
-          <div className="flex items-center gap-2 pl-1">
-            <ShieldCheck className="size-4 text-amber-500" />
-            <h2 className="text-sm font-bold uppercase tracking-wider">
-              Gateway Authorization Required
-            </h2>
-            <Badge
-              variant="secondary"
-              className="rounded-full h-5 px-1.5 text-[10px] tabular-nums font-bold"
-            >
-              {(pendingRequests.data?.requests ?? []).length}
-            </Badge>
-          </div>
-
-          <div className="grid gap-4">
-            {pendingRequests.data?.requests?.map((req) => (
-              <Card
-                key={req.id}
-                className="border-border/50 bg-card/30 overflow-hidden group"
-              >
-                <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border/20">
-                  <div className="p-4 md:w-64 space-y-1 bg-muted/10">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm truncate">
-                        {req.project.name}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className="text-[9px] font-mono h-4"
-                      >
-                        {req.project.slug}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {req.user?.email}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground mt-2 opacity-60">
-                      <Clock className="size-3" />
-                      {new Date(req.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 p-4">
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground mb-2 flex items-center gap-1.5">
-                          Requested Permissions{" "}
-                          <ChevronRight className="size-2.5" />
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {req.requestedServiceKeys.map((serviceKey) => {
-                            const checked = (
-                              approveSelectionByRequest[req.id] ?? []
-                            ).includes(serviceKey);
-                            return (
-                              <button
-                                key={`${req.id}-${serviceKey}`}
-                                onClick={() =>
-                                  toggleApproveService(req.id, serviceKey)
-                                }
-                                className={cn(
-                                  "px-2 py-1 rounded-md border text-[9px] font-mono transition-all",
-                                  checked
-                                    ? "bg-primary/10 border-primary/30 text-primary font-bold shadow-sm"
-                                    : "bg-background/40 border-border/50 text-muted-foreground hover:border-border hover:bg-background/60",
-                                )}
-                              >
-                                {serviceKey}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/10">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            reviewRequest.mutate({
-                              requestId: req.id,
-                              decision: "deny",
-                            })
-                          }
-                          disabled={reviewRequest.isPending}
-                          className="h-8 text-[11px] hover:bg-rose-500/10 hover:text-rose-600 transition-colors"
-                        >
-                          Deny Entry
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            reviewRequest.mutate({
-                              requestId: req.id,
-                              decision: "approve",
-                              approvedServiceKeys:
-                                (approveSelectionByRequest[req.id] ?? [])
-                                  .length > 0
-                                  ? approveSelectionByRequest[req.id]
-                                  : req.requestedServiceKeys,
-                            })
-                          }
-                          disabled={reviewRequest.isPending}
-                          className="h-8 text-[11px] font-bold px-4 shadow-sm"
-                        >
-                          {reviewRequest.isPending
-                            ? "Processing..."
-                            : "Authorize Access"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -6,12 +6,11 @@ import {
   useQuery,
   useQueryClient,
 } from "@/lib/shared/react-query";
-import { type ServiceKey, projectsApi } from "@/lib/projects/api";
+import { projectsApi } from "@/lib/projects/api";
 import {
   ProjectGovernanceCard,
   ProjectProfileCard,
   ProjectSettingsHero,
-  ProjectTokensCard,
 } from "@/components/dashboard/projects/project-settings-sections";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
@@ -28,14 +27,10 @@ export default function ProjectSettingsPage({
   const { currentAccess } = useCurrentProject();
   const canManageProject = isAdmin || currentAccess?.canManageProject === true;
 
-  const [newTokenLabel, setNewTokenLabel] = useState("");
-  const [plainToken, setPlainToken] = useState<string | null>(null);
   const [memberUserId, setMemberUserId] = useState("");
   const [handoverEmail, setHandoverEmail] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
-  const [memberSelectedServicesByUser, setMemberSelectedServicesByUser] =
-    useState<Record<string, ServiceKey[]>>({});
   const [fieldOverridesBySlug, setFieldOverridesBySlug] = useState<
     Record<
       string,
@@ -54,21 +49,9 @@ export default function ProjectSettingsPage({
     enabled: !!slug,
   });
 
-  const tokensQuery = useQuery({
-    queryKey: ["project-tokens", slug],
-    queryFn: () => projectsApi.listTokens(slug),
-    enabled: !!slug,
-  });
-
   const membersQuery = useQuery({
     queryKey: ["project-members", slug],
     queryFn: () => projectsApi.listMembers(slug),
-    enabled: !!slug && canManageProject,
-  });
-
-  const servicesQuery = useQuery({
-    queryKey: ["project-services", slug],
-    queryFn: () => projectsApi.listProjectServices(slug),
     enabled: !!slug && canManageProject,
   });
 
@@ -97,14 +80,6 @@ export default function ProjectSettingsPage({
     return { ...baseFields, ...currentFieldOverrides };
   }, [baseFields, fieldOverridesBySlug, slug]);
 
-  const enabledProjectServiceKeys = useMemo(
-    () =>
-      (servicesQuery.data?.services ?? [])
-        .filter((service) => service.enabledForProject)
-        .map((service) => service.key),
-    [servicesQuery.data?.services],
-  );
-
   const updateProject = useMutation({
     mutationFn: () =>
       projectsApi.update(slug, {
@@ -126,30 +101,6 @@ export default function ProjectSettingsPage({
       await queryClient.invalidateQueries({ queryKey: ["project", slug] });
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project updated");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const createToken = useMutation({
-    mutationFn: () => projectsApi.createToken(slug, { label: newTokenLabel }),
-    onSuccess: async (data) => {
-      setPlainToken(data.token);
-      setNewTokenLabel("");
-      await queryClient.invalidateQueries({
-        queryKey: ["project-tokens", slug],
-      });
-      toast.success("Token created");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const revokeToken = useMutation({
-    mutationFn: (tokenId: string) => projectsApi.revokeToken(slug, tokenId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["project-tokens", slug],
-      });
-      toast.success("Token revoked");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -197,61 +148,6 @@ export default function ProjectSettingsPage({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const toggleProjectService = useMutation({
-    mutationFn: ({
-      serviceKey,
-      enabled,
-    }: {
-      serviceKey: ServiceKey;
-      enabled: boolean;
-    }) => projectsApi.setProjectService(slug, serviceKey, enabled),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["project-services", slug],
-      });
-      toast.success("Project service updated");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const grantMemberServices = useMutation({
-    mutationFn: ({
-      userId,
-      serviceKeys,
-    }: {
-      userId: string;
-      serviceKeys: ServiceKey[];
-    }) => projectsApi.grantMemberServices(slug, userId, serviceKeys),
-    onSuccess: async (_, vars) => {
-      setMemberSelectedServicesByUser((prev) => ({
-        ...prev,
-        [vars.userId]: [],
-      }));
-      await queryClient.invalidateQueries({
-        queryKey: ["project-members", slug],
-      });
-      toast.success("Member service grants updated");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const revokeMemberService = useMutation({
-    mutationFn: ({
-      userId,
-      serviceKey,
-    }: {
-      userId: string;
-      serviceKey: ServiceKey;
-    }) => projectsApi.revokeMemberService(slug, userId, serviceKey),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["project-members", slug],
-      });
-      toast.success("Service revoked");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
   const handoverProject = useMutation({
     mutationFn: () =>
       projectsApi.handoverProject(slug, { email: handoverEmail.trim() }),
@@ -266,16 +162,6 @@ export default function ProjectSettingsPage({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  function toggleSelectedService(userId: string, serviceKey: ServiceKey) {
-    setMemberSelectedServicesByUser((prev) => {
-      const existing = prev[userId] ?? [];
-      const next = existing.includes(serviceKey)
-        ? existing.filter((key) => key !== serviceKey)
-        : [...existing, serviceKey];
-      return { ...prev, [userId]: next };
-    });
-  }
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <ProjectSettingsHero
@@ -286,33 +172,26 @@ export default function ProjectSettingsPage({
         memberRole={memberRole}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
-        <ProjectProfileCard
-          fields={fields}
-          onFieldChange={(key, value) =>
-            setFieldOverridesBySlug((prev) => ({
-              ...prev,
-              [slug]: {
-                ...(prev[slug] ?? {}),
-                [key]: value,
-              },
-            }))
+      <ProjectProfileCard
+        fields={fields}
+        onFieldChange={(key, value) =>
+          setFieldOverridesBySlug((prev) => ({
+            ...prev,
+            [slug]: {
+              ...(prev[slug] ?? {}),
+              [key]: value,
+            },
+          }))
+        }
+        onSave={() => {
+          if (!canManageProject) {
+            toast.error("You have read-only access for this project.");
+            return;
           }
-          onSave={() => updateProject.mutate()}
-          savePending={updateProject.isPending}
-        />
-
-        <ProjectTokensCard
-          newTokenLabel={newTokenLabel}
-          onTokenLabelChange={setNewTokenLabel}
-          onCreateToken={() => createToken.mutate()}
-          createTokenPending={createToken.isPending}
-          plainToken={plainToken}
-          tokens={tokensQuery.data?.tokens ?? []}
-          onRevokeToken={(tokenId) => revokeToken.mutate(tokenId)}
-          revokeTokenPending={revokeToken.isPending}
-        />
-      </div>
+          updateProject.mutate();
+        }}
+        savePending={updateProject.isPending}
+      />
 
       {canManageProject ? (
         <ProjectGovernanceCard
@@ -336,22 +215,6 @@ export default function ProjectSettingsPage({
           members={membersQuery.data?.members ?? []}
           onRemoveMember={(userId) => removeMember.mutate(userId)}
           removeMemberPending={removeMember.isPending}
-          onRevokeMemberService={(userId, serviceKey) =>
-            revokeMemberService.mutate({ userId, serviceKey })
-          }
-          revokeMemberServicePending={revokeMemberService.isPending}
-          enabledProjectServiceKeys={enabledProjectServiceKeys}
-          selectedServicesByUser={memberSelectedServicesByUser}
-          onToggleSelectedService={toggleSelectedService}
-          onGrantMemberServices={(userId, serviceKeys) =>
-            grantMemberServices.mutate({ userId, serviceKeys })
-          }
-          grantMemberServicesPending={grantMemberServices.isPending}
-          services={servicesQuery.data?.services ?? []}
-          onToggleProjectService={(serviceKey, enabled) =>
-            toggleProjectService.mutate({ serviceKey, enabled })
-          }
-          toggleProjectServicePending={toggleProjectService.isPending}
         />
       ) : null}
     </div>

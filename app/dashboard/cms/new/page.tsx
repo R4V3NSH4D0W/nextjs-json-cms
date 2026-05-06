@@ -81,7 +81,7 @@ function NewPageContent() {
   const consumedAddLayoutSearchRef = useRef<string | null>(null);
 
   const { data: layoutsRes, isLoading: layoutsLoading } = useCmsLayouts();
-  const layouts = layoutsRes?.layouts ?? [];
+  const layouts = useMemo(() => layoutsRes?.layouts ?? [], [layoutsRes?.layouts]);
 
   const { data: navSite } = useCmsNavigationConfig();
   const { data: footerSite } = useCmsFooterConfig();

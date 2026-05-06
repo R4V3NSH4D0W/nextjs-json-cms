@@ -10,7 +10,7 @@ export default async function LoginPage({
 }) {
   const session = await getSession();
   if (session) {
-    redirect("/dashboard");
+    redirect(session.user.isAdmin ? "/admin" : "/dashboard");
   }
 
   const params = await searchParams;
@@ -22,15 +22,9 @@ export default async function LoginPage({
         <h1 className="text-center text-2xl font-semibold tracking-tight text-foreground">
           Sign in
         </h1>
-        <p className="mt-2 text-center text-sm text-muted-foreground">
-          Admin — session cookie + database (no JWT in the browser).
-        </p>
         <div className="mt-10">
           <LoginForm callbackUrl={callbackUrl} />
         </div>
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          Accounts are created by platform administrators.
-        </p>
       </div>
     </main>
   );

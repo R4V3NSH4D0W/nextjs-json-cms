@@ -84,7 +84,7 @@ function CmsPageEditContent() {
   const page = data?.page;
 
   const { data: layoutsRes, isLoading: layoutsLoading } = useCmsLayouts();
-  const layouts = layoutsRes?.layouts ?? [];
+  const layouts = useMemo(() => layoutsRes?.layouts ?? [], [layoutsRes?.layouts]);
 
   const { data: navSite } = useCmsNavigationConfig();
   const { data: footerSite } = useCmsFooterConfig();

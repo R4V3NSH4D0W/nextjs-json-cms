@@ -25,10 +25,7 @@ import type {
   ProjectMember,
   ProjectToken,
   ProjectUserDirectoryEntry,
-  ServiceGrantSummary,
-  ServiceKey,
 } from "@/lib/projects/api";
-import { SERVICE_KEYS } from "@/lib/projects/api";
 import {
   ShieldCheck,
   Users,
@@ -117,15 +114,9 @@ export function ProjectSettingsHero(props: {
   projectSlug: string;
   isAdmin: boolean;
   canManageProject: boolean;
-  memberRole: "manager" | "member" | null;
+  memberRole: "admin" | null;
 }) {
-  const roleLabel = props.isAdmin
-    ? "Platform admin"
-    : props.memberRole === "manager"
-      ? "Project manager"
-      : props.memberRole === "member"
-        ? "Project member"
-        : "Viewer";
+  const roleLabel = props.isAdmin ? "Super admin" : props.memberRole ? "Project admin" : "Viewer";
 
   return (
     <div className="space-y-3">
@@ -441,16 +432,6 @@ export function ProjectGovernanceCard(props: {
   members: ProjectMember[];
   onRemoveMember: (userId: string) => void;
   removeMemberPending: boolean;
-  onRevokeMemberService: (userId: string, serviceKey: ServiceKey) => void;
-  revokeMemberServicePending: boolean;
-  enabledProjectServiceKeys: ServiceKey[];
-  selectedServicesByUser: Record<string, ServiceKey[]>;
-  onToggleSelectedService: (userId: string, serviceKey: ServiceKey) => void;
-  onGrantMemberServices: (userId: string, serviceKeys: ServiceKey[]) => void;
-  grantMemberServicesPending: boolean;
-  services: ServiceGrantSummary[];
-  onToggleProjectService: (serviceKey: ServiceKey, enabled: boolean) => void;
-  toggleProjectServicePending: boolean;
 }) {
   return (
     <Card>
@@ -461,14 +442,13 @@ export function ProjectGovernanceCard(props: {
         </div>
         <CardTitle>Team and Access</CardTitle>
         <CardDescription>
-          Manage members and platform service access.
+          Manage project admins with simplified role controls.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs defaultValue="members" className="space-y-4">
-          <TabsList className="grid h-10 w-full grid-cols-2 sm:w-auto">
-            <TabsTrigger value="members">Members</TabsTrigger>
-            <TabsTrigger value="services">Project services</TabsTrigger>
+          <TabsList className="grid h-10 w-full grid-cols-1 sm:w-auto">
+            <TabsTrigger value="members">Project admins</TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-6">
@@ -597,15 +577,6 @@ export function ProjectGovernanceCard(props: {
                 </div>
               ) : null}
               {props.members.map((member) => {
-                const selected =
-                  props.selectedServicesByUser[member.user.id] ?? [];
-                const missingEnabledServiceKeys =
-                  props.enabledProjectServiceKeys.filter(
-                    (serviceKey) => !member.features.includes(serviceKey),
-                  );
-                const selectedMissingServices = selected.filter((serviceKey) =>
-                  missingEnabledServiceKeys.includes(serviceKey),
-                );
                 return (
                   <Card key={member.user.id} className="border">
                     <CardHeader className="p-4 pb-2">
@@ -619,7 +590,7 @@ export function ProjectGovernanceCard(props: {
                               variant="secondary"
                               className="text-[10px] uppercase"
                             >
-                              {member.role}
+                              Project admin
                             </Badge>
                             <span className="text-xs text-muted-foreground">
                               Joined{" "}
@@ -640,157 +611,13 @@ export function ProjectGovernanceCard(props: {
                     </CardHeader>
 
                     <CardContent className="p-4 pt-2 space-y-4">
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Provisioned services
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {member.features.filter((f) =>
-                            (SERVICE_KEYS as readonly string[]).includes(f),
-                          ).length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              No services provisioned
-                            </span>
-                          ) : (
-                            (
-                              member.features.filter((f) =>
-                                (SERVICE_KEYS as readonly string[]).includes(f),
-                              ) as ServiceKey[]
-                            ).map((serviceKey) => (
-                              <Badge
-                                key={serviceKey}
-                                variant="outline"
-                                className="flex h-5 cursor-pointer items-center gap-1 px-1.5 font-mono text-[10px]"
-                                onClick={() =>
-                                  props.onRevokeMemberService(
-                                    member.user.id,
-                                    serviceKey,
-                                  )
-                                }
-                              >
-                                {serviceKey}{" "}
-                                <Trash2 className="size-2 text-current" />
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 border-t pt-2">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Available to grant
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {props.enabledProjectServiceKeys.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">
-                              Enable services in the catalog first.
-                            </p>
-                          ) : missingEnabledServiceKeys.length === 0 ? (
-                            <p className="text-xs text-emerald-600">
-                              All available services provisioned.
-                            </p>
-                          ) : (
-                            missingEnabledServiceKeys.map((serviceKey) => (
-                              <button
-                                key={serviceKey}
-                                onClick={() =>
-                                  props.onToggleSelectedService(
-                                    member.user.id,
-                                    serviceKey,
-                                  )
-                                }
-                                className={cn(
-                                  "rounded border px-2 py-0.5 font-mono text-[10px]",
-                                  selected.includes(serviceKey)
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border/60 bg-background text-muted-foreground",
-                                )}
-                              >
-                                {serviceKey}
-                              </button>
-                            ))
-                          )}
-                        </div>
-
-                        {selectedMissingServices.length > 0 && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              props.onGrantMemberServices(
-                                member.user.id,
-                                selectedMissingServices,
-                              )
-                            }
-                            disabled={props.grantMemberServicesPending}
-                            className="h-8 w-full text-xs"
-                          >
-                            Provision Services ({selectedMissingServices.length}
-                            )
-                          </Button>
-                        )}
-                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Project admins have full CMS and service access by default in the simplified model.
+                      </p>
                     </CardContent>
                   </Card>
                 );
               })}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="services" className="space-y-4">
-            <div className="mb-2 flex items-start gap-3 rounded-md border bg-muted/30 p-3">
-              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">
-                CMS tools are available by default. Enable platform services
-                here and grant them to members in the Members tab.
-              </p>
-            </div>
-
-            <div className="grid gap-3">
-              {props.services.length === 0 ? (
-                <div className="rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
-                  <Layers className="mx-auto mb-2 size-6" />
-                  <p>No services available.</p>
-                </div>
-              ) : null}
-              {props.services.map((service) => (
-                <div
-                  key={service.key}
-                  className={cn(
-                    "flex items-center justify-between gap-4 rounded-md border p-4",
-                    service.enabledForProject
-                      ? "border-primary/40 bg-primary/5"
-                      : "bg-background",
-                  )}
-                >
-                  <div className="space-y-1">
-                    <p className="font-mono text-xs font-medium">
-                      {service.key}
-                    </p>
-                    {service.description ? (
-                      <p className="max-w-lg pr-4 text-xs text-muted-foreground">
-                        {service.description}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Button
-                    variant={service.enabledForProject ? "default" : "outline"}
-                    size="sm"
-                    onClick={() =>
-                      props.onToggleProjectService(
-                        service.key,
-                        !service.enabledForProject,
-                      )
-                    }
-                    disabled={props.toggleProjectServicePending}
-                    className={cn(
-                      "h-8 min-w-20 text-xs",
-                      service.enabledForProject ? "" : "text-muted-foreground",
-                    )}
-                  >
-                    {service.enabledForProject ? "Active" : "Disabled"}
-                  </Button>
-                </div>
-              ))}
             </div>
           </TabsContent>
         </Tabs>
