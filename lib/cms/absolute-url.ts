@@ -1,6 +1,21 @@
 /**
  * Builds a browser-usable URL for API-hosted paths (e.g. `/uploads/cms/x.jpg`).
  */
+function resolveApiBaseParts() {
+  const rawBase = process.env.NEXT_PUBLIC_API_URL || "";
+  const normalizedBase = rawBase.replace(/\/$/, "");
+  const baseWithProtocol = normalizedBase
+    ? /^(https?:)?\/\//i.test(normalizedBase)
+      ? normalizedBase
+      : `https://${normalizedBase}`
+    : "";
+  const baseUrl = baseWithProtocol ? new URL(baseWithProtocol) : null;
+  const baseHost = baseUrl?.host.toLowerCase() ?? "";
+  const baseProtocol = baseUrl?.protocol ?? "https:";
+
+  return { baseWithProtocol, baseUrl, baseHost, baseProtocol };
+}
+
 export function absoluteApiUrl(path: string): string {
   const trimmedPath = path.trim();
   if (!trimmedPath) return "";
@@ -14,19 +29,8 @@ export function absoluteApiUrl(path: string): string {
   }
   if (trimmedPath.startsWith("//")) return `https:${trimmedPath}`;
 
-  const rawBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "";
-  const normalizedBase = rawBase.replace(/\/$/, "");
-  const baseWithProtocol = normalizedBase
-    ? /^(https?:)?\/\//i.test(normalizedBase)
-      ? normalizedBase
-      : `https://${normalizedBase}`
-    : "";
-  const baseUrl = baseWithProtocol ? new URL(baseWithProtocol) : null;
-  const baseHost = baseUrl?.host.toLowerCase() ?? "";
-  const baseProtocol = baseUrl?.protocol ?? "https:";
+  const { baseWithProtocol, baseHost, baseProtocol } =
+    resolveApiBaseParts();
 
   // Handle host/path inputs from media library, e.g. "backend.devfy.codes/uploads/x.svg".
   const hostPathMatch = trimmedPath.match(
@@ -49,4 +53,49 @@ export function absoluteApiUrl(path: string): string {
   return trimmedPath.startsWith("/")
     ? `${baseWithProtocol}${trimmedPath}`
     : `${baseWithProtocol}/${trimmedPath}`;
+}
+
+export function absoluteTenantApiUrl(
+  path: string,
+  tenant: { slug?: string | null; primaryDomain?: string | null } = {},
+): string {
+  const fallback = absoluteApiUrl(path);
+  const trimmedPath = path.trim();
+  if (!trimmedPath || /^https?:\/\//i.test(trimmedPath)) return fallback;
+
+  const { baseUrl } = resolveApiBaseParts();
+  if (!baseUrl) return fallback;
+
+  const protocol = baseUrl.protocol || "http:";
+  const port = baseUrl.port ? `:${baseUrl.port}` : "";
+  const pathPart = trimmedPath.startsWith("/") ? trimmedPath : `/${trimmedPath}`;
+  const slug = (tenant.slug ?? "").trim().toLowerCase();
+
+  const domain = (tenant.primaryDomain ?? "").trim().toLowerCase();
+  if (domain) {
+    const host = domain.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+    if (!host) return fallback;
+    const hostNoPort = host.split(":")[0]?.toLowerCase() ?? "";
+    const isPlainLocalhost =
+      hostNoPort === "localhost" || hostNoPort === "127.0.0.1";
+    if (isPlainLocalhost && slug) {
+      return `${protocol}//${slug}.localhost${port}${pathPart}`;
+    }
+    if (host.includes(":")) {
+      return `${protocol}//${host}${pathPart}`;
+    }
+    return `${protocol}//${host}${port}${pathPart}`;
+  }
+
+  if (!slug) return fallback;
+
+  const baseHostname = baseUrl.hostname.toLowerCase();
+  const tenantHost =
+    baseHostname === "localhost" ||
+    baseHostname === "127.0.0.1" ||
+    baseHostname.endsWith(".localhost")
+      ? `${slug}.localhost`
+      : `${slug}.${baseHostname}`;
+
+  return `${protocol}//${tenantHost}${port}${pathPart}`;
 }

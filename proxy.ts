@@ -1,14 +1,30 @@
 /**
  * Next.js 16 `proxy.ts` — runs on the Node.js runtime before routes complete.
- * Handles CORS + rate limiting + request IDs for `/api/*`, and dashboard access checks.
+ * Handles rate limiting and request IDs.
+ *
+ * CORS is handled by the Hono backend itself (via hono/cors middleware).
+ * The Next.js rewrite forwards /api/* to Hono, so we deliberately skip
+ * adding CORS headers here to avoid conflicts with Hono's own headers.
  *
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/proxy
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { corsHeaders } from "@/lib/middleware/cors";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
+
+function normalizeHost(rawHost: string) {
+  return rawHost.trim().toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "");
+}
+
+function tenantSlugFromHost(rawHost: string) {
+  const host = normalizeHost(rawHost);
+  const parts = host.split(".");
+  if (parts.length >= 2 && parts[parts.length - 1] === "localhost") {
+    return parts[0]?.trim() || "";
+  }
+  return "";
+}
 
 export async function proxy(request: NextRequest) {
   const requestId =
@@ -16,14 +32,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (pathname.startsWith("/api")) {
-    if (request.method === "OPTIONS") {
-      const { headers, blocked } = corsHeaders(request, requestId);
-      if (blocked) {
-        return new NextResponse(null, { status: 403 });
-      }
-      return new NextResponse(null, { status: 204, headers });
-    }
-
+    // Rate-limit all /api/* traffic (applies before the rewrite to Hono hits)
     const limit = await checkRateLimit(request);
     if (!limit.allowed) {
       return new NextResponse(
@@ -38,35 +47,22 @@ export async function proxy(request: NextRequest) {
         },
       );
     }
-
-    const { headers: corsH, blocked } = corsHeaders(request, requestId);
-    if (blocked) {
-      return new NextResponse(
-        JSON.stringify({ error: "Origin not allowed" }),
-        {
-          status: 403,
-          headers: {
-            "Content-Type": "application/json",
-            "X-Request-Id": requestId,
-          },
-        },
-      );
-    }
-
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-request-id", requestId);
-
-    const response = NextResponse.next({
-      request: { headers: requestHeaders },
-    });
-    corsH.forEach((value, key) => {
-      response.headers.set(key, value);
-    });
-    return response;
   }
 
+  // Forward X-Request-Id on every request so server logs can correlate
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
+  const incomingHost =
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    request.nextUrl.host;
+  if (incomingHost) {
+    requestHeaders.set("x-forwarded-host", incomingHost);
+    const tenantSlug = tenantSlugFromHost(incomingHost);
+    if (tenantSlug) {
+      requestHeaders.set("x-tenant-slug", tenantSlug);
+    }
+  }
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 

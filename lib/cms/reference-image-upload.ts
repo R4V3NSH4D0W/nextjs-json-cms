@@ -1,4 +1,4 @@
-import { api } from "@/lib/api/admin-client";
+import { api } from "@/lib/fetcher";
 
 function parseUploadUrl(res: unknown): string | null {
   if (!res || typeof res !== "object") return null;
@@ -17,13 +17,13 @@ function parseUploadUrl(res: unknown): string | null {
 
 /**
  * Uploads a reference screenshot to the media gallery under folder `cms`
- * (stored under `assets/uploads/cms/…`, served at `/api/media/...`).
+ * (stored under `assets/uploads/${projectSlug}/cms/…`, served at `/api/media/${projectSlug}/cms/...`).
  */
-export async function uploadCmsReferenceImage(file: File): Promise<string> {
+export async function uploadCmsReferenceImage(file: File, projectSlug: string): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await api.post<unknown>(
-    `/api/v1/admin/media/gallery/upload?folder=${encodeURIComponent("cms")}`,
+    `/api/v1/admin/projects/${projectSlug}/media/gallery/upload?folder=${encodeURIComponent("cms")}`,
     formData
   );
   const url = parseUploadUrl(res);

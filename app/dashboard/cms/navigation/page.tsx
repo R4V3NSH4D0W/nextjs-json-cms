@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { Loader2, Menu } from "lucide-react";
 import { CmsPublicApiLink } from "@/components/cms/cms-public-api-link";
@@ -28,7 +29,7 @@ import { cmsApi, type CmsLayoutResponse } from "@/lib/cms/api";
 import { validateSiteLayoutSectionsOptional } from "@/lib/cms/page-slots";
 import type { CmsNavigationConfig } from "@/lib/cms/site-content-types";
 import type { CmsNewPageLayoutSlot } from "@/lib/cms/new-page-draft";
-import { PUBLIC_CMS_NAVIGATION_API_PATH } from "@/lib/cms/public-site-api-paths";
+import { publicCmsNavigationApiPath } from "@/lib/cms/public-site-api-paths";
 import { toast } from "sonner";
 
 const NAV_PATH = "/dashboard/cms/navigation";
@@ -51,16 +52,19 @@ function NavigationLayoutSectionsTab({
               ...d,
               sections: next.length > 0 ? next : undefined,
             }
-          : d
+          : d,
       );
     },
-    [setDraft]
+    [setDraft],
   );
 
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[200px] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          style={{ minHeight: 200 }}
+        >
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading layout editor…
         </div>
@@ -79,6 +83,7 @@ function NavigationLayoutSectionsTab({
 }
 
 export default function CmsNavigationPage() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const { data, isLoading } = useCmsNavigationConfig();
   const update = useUpdateCmsNavigationConfig();
@@ -98,9 +103,9 @@ export default function CmsNavigationPage() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
-      }
+      },
     );
     if (err) {
       toast.error(err);
@@ -140,7 +145,9 @@ export default function CmsNavigationPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={PUBLIC_CMS_NAVIGATION_API_PATH}
+            apiPath={publicCmsNavigationApiPath()}
+            tenantSlug={currentProject?.slug}
+            tenantDomain={currentProject?.primaryDomain}
             titleHint="Public JSON: success + layout configValues keys (flat), not nested sections."
           />
         </div>

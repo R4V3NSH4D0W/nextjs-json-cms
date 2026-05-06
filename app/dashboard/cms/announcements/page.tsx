@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { Loader2, Megaphone } from "lucide-react";
 import { CmsPublicApiLink } from "@/components/cms/cms-public-api-link";
@@ -30,7 +31,7 @@ import { cmsApi, type CmsLayoutResponse } from "@/lib/cms/api";
 import { validateSiteLayoutSectionsOptional } from "@/lib/cms/page-slots";
 import type { CmsAnnouncementsConfig } from "@/lib/cms/site-content-types";
 import type { CmsNewPageLayoutSlot } from "@/lib/cms/new-page-draft";
-import { PUBLIC_CMS_ANNOUNCEMENTS_API_PATH } from "@/lib/cms/public-site-api-paths";
+import { publicCmsAnnouncementsApiPath } from "@/lib/cms/public-site-api-paths";
 import { toast } from "sonner";
 
 const ANNOUNCEMENTS_PATH = "/dashboard/cms/announcements";
@@ -53,16 +54,19 @@ function AnnouncementsLayoutSectionsTab({
               ...d,
               sections: next.length > 0 ? next : undefined,
             }
-          : d
+          : d,
       );
     },
-    [setDraft]
+    [setDraft],
   );
 
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[200px] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          style={{ minHeight: 200 }}
+        >
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading layout editor…
         </div>
@@ -82,6 +86,7 @@ function AnnouncementsLayoutSectionsTab({
 }
 
 export default function CmsAnnouncementsPage() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const { data, isLoading } = useCmsAnnouncementsConfig();
   const update = useUpdateCmsAnnouncementsConfig();
@@ -101,9 +106,9 @@ export default function CmsAnnouncementsPage() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
-      }
+      },
     );
     if (err) {
       toast.error(err);
@@ -136,13 +141,15 @@ export default function CmsAnnouncementsPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           Use <strong>Structured tree</strong> for stacked banners, or{" "}
-          <strong>Layout sections</strong> for a single layout-based strip. Add a
-          reference screenshot to preview the announcement bar in the panel.
+          <strong>Layout sections</strong> for a single layout-based strip. Add
+          a reference screenshot to preview the announcement bar in the panel.
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={PUBLIC_CMS_ANNOUNCEMENTS_API_PATH}
+            apiPath={publicCmsAnnouncementsApiPath()}
+            tenantSlug={currentProject?.slug}
+            tenantDomain={currentProject?.primaryDomain}
             titleHint="Public JSON: success + layout root keys from configValues (e.g. announcement_under_construction)."
           />
         </div>
@@ -166,8 +173,8 @@ export default function CmsAnnouncementsPage() {
               Show announcement bar
             </Label>
             <p className="text-xs text-muted-foreground">
-              When unchecked, the storefront should hide the bar entirely
-              (saved with your announcements config).
+              When unchecked, the storefront should hide the bar entirely (saved
+              with your announcements config).
             </p>
           </div>
         </div>

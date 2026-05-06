@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
 import { Info, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ import { toast } from "sonner";
 const NEW_PAGE_PATH = "/dashboard/cms/new";
 
 function NewPageContent() {
+  const { currentProject } = useCurrentProject();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -79,7 +81,7 @@ function NewPageContent() {
   const consumedAddLayoutSearchRef = useRef<string | null>(null);
 
   const { data: layoutsRes, isLoading: layoutsLoading } = useCmsLayouts();
-  const layouts = layoutsRes?.layouts ?? [];
+  const layouts = useMemo(() => layoutsRes?.layouts ?? [], [layoutsRes?.layouts]);
 
   const { data: navSite } = useCmsNavigationConfig();
   const { data: footerSite } = useCmsFooterConfig();
@@ -223,7 +225,7 @@ function NewPageContent() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
       }
     );
@@ -239,7 +241,7 @@ function NewPageContent() {
 
       const orderedWithLayout = slots.filter((s) => s.layoutId);
       for (const slot of orderedWithLayout) {
-        await cmsApi.addBlock(pageId, {
+        await cmsApi.addBlock(currentProject!.slug, pageId, {
           type: "text_block",
           config: mergeLayoutMetaIntoConfig(
             slot.configValues,

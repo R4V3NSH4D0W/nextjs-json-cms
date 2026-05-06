@@ -1,17 +1,22 @@
 import type { NextConfig } from "next";
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
   poweredByHeader: false,
-  serverExternalPackages: [
-    "@prisma/client",
-    "pg",
-    "@prisma/adapter-pg",
-    "pino",
-    "pino-pretty",
-    "bcryptjs",
-  ],
+  // Prisma / pg / bcrypt now live in the Hono backend only
+  serverExternalPackages: ["pino", "pino-pretty"],
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${API_URL}/api/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {
@@ -44,6 +49,17 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        // Allow local Hono backend media during development
+        protocol: "http",
+        hostname: "localhost",
+        port: "4000",
+        pathname: "/api/media/**",
+      },
+      {
+        protocol: "https",
+        hostname:'ng4mq8bt-3000.inc1.devtunnels.ms'
+      }
     ],
   },
 };

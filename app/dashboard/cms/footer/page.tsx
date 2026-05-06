@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { Loader2, PanelBottom } from "lucide-react";
 import { CmsPublicApiLink } from "@/components/cms/cms-public-api-link";
@@ -29,7 +30,7 @@ import { validateSiteLayoutSectionsOptional } from "@/lib/cms/page-slots";
 import type { CmsFooterConfig } from "@/lib/cms/site-content-types";
 import type { CmsNewPageLayoutSlot } from "@/lib/cms/new-page-draft";
 import { toast } from "sonner";
-import { PUBLIC_CMS_FOOTER_API_PATH } from "@/lib/cms/public-site-api-paths";
+import { publicCmsFooterApiPath } from "@/lib/cms/public-site-api-paths";
 
 const FOOTER_PATH = "/dashboard/cms/footer";
 
@@ -60,7 +61,10 @@ function FooterLayoutSectionsTab({
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[200px] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          style={{ minHeight: 200 }}
+        >
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading layout editor…
         </div>
@@ -80,6 +84,7 @@ function FooterLayoutSectionsTab({
 }
 
 export default function CmsFooterPage() {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const { data, isLoading } = useCmsFooterConfig();
   const update = useUpdateCmsFooterConfig();
@@ -99,7 +104,7 @@ export default function CmsFooterPage() {
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
       },
     );
@@ -140,7 +145,9 @@ export default function CmsFooterPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">Public API</span>
           <CmsPublicApiLink
-            apiPath={PUBLIC_CMS_FOOTER_API_PATH}
+            apiPath={publicCmsFooterApiPath()}
+            tenantSlug={currentProject?.slug}
+            tenantDomain={currentProject?.primaryDomain}
             titleHint="Public JSON: success + layout configValues keys (flat), not nested sections."
           />
         </div>

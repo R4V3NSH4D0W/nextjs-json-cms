@@ -1,8 +1,8 @@
-import { api } from "@/lib/api/admin-client";
+import { api } from "@/lib/fetcher";
 import {
-  PUBLIC_CMS_ANNOUNCEMENTS_API_PATH,
-  PUBLIC_CMS_FOOTER_API_PATH,
-  PUBLIC_CMS_NAVIGATION_API_PATH,
+  publicCmsAnnouncementsApiPath,
+  publicCmsFooterApiPath,
+  publicCmsNavigationApiPath,
 } from "@/lib/cms/public-site-api-paths";
 import type {
   CmsAnnouncementsConfig,
@@ -28,6 +28,12 @@ export interface CmsLayoutRef {
   id: string;
   name: string;
   rootKey: string;
+}
+
+export interface CmsProjectRef {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 export interface CmsBlock {
@@ -56,11 +62,12 @@ export interface CmsPageSeoFields {
 
 export interface CmsPage extends CmsPageSeoFields {
   id: string;
+  projectId: string;
   slug: string;
   title: string;
   /** Enabled in CMS (not archived). */
   isActive: boolean;
-  /** Live on public `/api/v1/cms/pages/...`. */
+  /** Live on public `/api/v1/pages/...`. */
   published: boolean;
   /** Admin-only draft; public API ignores until Publish. */
   draftData?: unknown | null;
@@ -93,6 +100,7 @@ export interface CmsReorderResponse {
 
 export interface CmsLayout {
   id: string;
+  projectId?: string;
   name: string;
   rootKey: string;
   schema: Record<string, unknown>;
@@ -119,6 +127,37 @@ export interface CmsLayoutsResponse {
 export interface CmsLayoutResponse {
   success: boolean;
   layout: CmsLayout;
+}
+
+export type CmsCustomToolDefinition = {
+  type?: string;
+  key?: string;
+  fields?: CmsCustomToolDefinition[];
+  children?: CmsCustomToolDefinition[];
+  defaultStr?: string;
+  defaultLink?: { value?: string; href?: string; target?: string };
+  required?: boolean;
+};
+
+export interface CmsCustomTool {
+  id: string;
+  name: string;
+  description?: string | null;
+  definition: CmsCustomToolDefinition;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CmsCustomToolsMap = Record<string, CmsCustomTool>;
+
+export interface CmsCustomToolsResponse {
+  success: boolean;
+  tools: CmsCustomToolsMap;
+}
+
+export interface CmsCustomToolResponse {
+  success: boolean;
+  tool: CmsCustomTool;
 }
 
 type CmsPageSeoCreatePatch = Partial<
@@ -165,24 +204,36 @@ export type CmsPageUpdateBody = Partial<
 
 export const cmsApi = {
   // Pages
-  listPages: () => api.get<CmsPagesResponse>("/api/v1/admin/cms-pages/pages"),
+  listPages: (projectSlug: string) =>
+    api.get<CmsPagesResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/pages`
+    ),
 
-  getPage: (id: string) =>
-    api.get<CmsPageResponse>(`/api/v1/admin/cms-pages/pages/${id}`),
+  getPage: (projectSlug: string, id: string) =>
+    api.get<CmsPageResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${id}`
+    ),
 
-  createPage: (data: CmsPageCreateBody) =>
-    api.post<CmsPageResponse>("/api/v1/admin/cms-pages/pages", data),
+  createPage: (projectSlug: string, data: CmsPageCreateBody) =>
+    api.post<CmsPageResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/pages`,
+      data
+    ),
 
-  updatePage: (id: string, data: CmsPageUpdateBody) =>
-    api.patch<CmsPageResponse>(`/api/v1/admin/cms-pages/pages/${id}`, data),
+  updatePage: (projectSlug: string, id: string, data: CmsPageUpdateBody) =>
+    api.patch<CmsPageResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${id}`,
+      data
+    ),
 
-  deletePage: (id: string) =>
+  deletePage: (projectSlug: string, id: string) =>
     api.delete<{ success: boolean; message?: string }>(
-      `/api/v1/admin/cms-pages/pages/${id}`
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${id}`
     ),
 
   // Blocks
   addBlock: (
+    projectSlug: string,
     pageId: string,
     data: {
       type: CmsBlockType;
@@ -191,11 +242,12 @@ export const cmsApi = {
     }
   ) =>
     api.post<CmsBlockResponse>(
-      `/api/v1/admin/cms-pages/pages/${pageId}/blocks`,
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}/blocks`,
       data
     ),
 
   updateBlock: (
+    projectSlug: string,
     blockId: string,
     data: {
       type?: CmsBlockType;
@@ -205,37 +257,49 @@ export const cmsApi = {
     }
   ) =>
     api.patch<CmsBlockResponse>(
-      `/api/v1/admin/cms-pages/blocks/${blockId}`,
+      `/api/v1/admin/projects/${projectSlug}/cms/blocks/${blockId}`,
       data
     ),
 
-  deleteBlock: (blockId: string) =>
+  deleteBlock: (projectSlug: string, blockId: string) =>
     api.delete<{ success: boolean; message?: string }>(
-      `/api/v1/admin/cms-pages/blocks/${blockId}`
+      `/api/v1/admin/projects/${projectSlug}/cms/blocks/${blockId}`
     ),
 
-  reorderBlocks: (pageId: string, orderedBlockIds: string[]) =>
+  reorderBlocks: (
+    projectSlug: string,
+    pageId: string,
+    orderedBlockIds: string[]
+  ) =>
     api.post<CmsReorderResponse>(
-      `/api/v1/admin/cms-pages/pages/${pageId}/reorder`,
+      `/api/v1/admin/projects/${projectSlug}/cms/pages/${pageId}/reorder`,
       { orderedBlockIds }
     ),
 
   // Layouts
-  listLayouts: () =>
-    api.get<CmsLayoutsResponse>("/api/v1/admin/cms-pages/layouts"),
+  listLayouts: (projectSlug: string) =>
+    api.get<CmsLayoutsResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/layouts`
+    ),
 
-  getLayout: (id: string) =>
-    api.get<CmsLayoutResponse>(`/api/v1/admin/cms-pages/layouts/${id}`),
+  getLayout: (projectSlug: string, id: string) =>
+    api.get<CmsLayoutResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`
+    ),
 
-  createLayout: (data: {
+  createLayout: (projectSlug: string, data: {
     name: string;
     rootKey: string;
     schema: Record<string, unknown>;
     referenceImageUrl?: string | null;
   }) =>
-    api.post<CmsLayoutResponse>("/api/v1/admin/cms-pages/layouts", data),
+    api.post<CmsLayoutResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/layouts`,
+      data
+    ),
 
   updateLayout: (
+    projectSlug: string,
     id: string,
     data: {
       name?: string;
@@ -244,44 +308,89 @@ export const cmsApi = {
       referenceImageUrl?: string | null;
     }
   ) =>
-    api.patch<CmsLayoutResponse>(`/api/v1/admin/cms-pages/layouts/${id}`, data),
+    api.patch<CmsLayoutResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`,
+      data
+    ),
 
-  deleteLayout: (id: string) =>
+  deleteLayout: (projectSlug: string, id: string) =>
     api.delete<{ success: boolean; message?: string }>(
-      `/api/v1/admin/cms-pages/layouts/${id}`
+      `/api/v1/admin/projects/${projectSlug}/cms/layouts/${id}`
+    ),
+
+  listCustomTools: (projectSlug: string) =>
+    api.get<CmsCustomToolsResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools`
+    ),
+
+  getCustomTool: (projectSlug: string, id: string) =>
+    api.get<CmsCustomToolResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`
+    ),
+
+  createCustomTool: (
+    projectSlug: string,
+    data: {
+      name: string;
+      description?: string | null;
+      definition: CmsCustomToolDefinition;
+    }
+  ) =>
+    api.post<CmsCustomToolResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools`,
+      data
+    ),
+
+  updateCustomTool: (
+    projectSlug: string,
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string | null;
+      definition: CmsCustomToolDefinition;
+    }>
+  ) =>
+    api.patch<CmsCustomToolResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`,
+      data
+    ),
+
+  deleteCustomTool: (projectSlug: string, id: string) =>
+    api.delete<{ success: boolean; message?: string }>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`
     ),
 
   /** Site chrome — nested trees (backend may 404 until implemented; dashboard uses session fallback). */
-  getNavigationConfig: () =>
+  getNavigationConfig: (projectSlug: string) =>
     api.get<{ success: boolean; navigation: CmsNavigationConfig }>(
-      "/api/v1/admin/cms-pages/navigation"
+      `/api/v1/admin/projects/${projectSlug}/cms/navigation`
     ),
 
-  putNavigationConfig: (data: CmsNavigationConfig) =>
+  putNavigationConfig: (projectSlug: string, data: CmsNavigationConfig) =>
     api.put<{ success: boolean; navigation: CmsNavigationConfig }>(
-      "/api/v1/admin/cms-pages/navigation",
+      `/api/v1/admin/projects/${projectSlug}/cms/navigation`,
       data
     ),
 
-  getFooterConfig: () =>
+  getFooterConfig: (projectSlug: string) =>
     api.get<{ success: boolean; footer: CmsFooterConfig }>(
-      "/api/v1/admin/cms-pages/footer"
+      `/api/v1/admin/projects/${projectSlug}/cms/footer`
     ),
 
-  putFooterConfig: (data: CmsFooterConfig) =>
+  putFooterConfig: (projectSlug: string, data: CmsFooterConfig) =>
     api.put<{ success: boolean; footer: CmsFooterConfig }>(
-      "/api/v1/admin/cms-pages/footer",
+      `/api/v1/admin/projects/${projectSlug}/cms/footer`,
       data
     ),
 
-  getAnnouncementsConfig: () =>
+  getAnnouncementsConfig: (projectSlug: string) =>
     api.get<{ success: boolean; announcements: CmsAnnouncementsConfig }>(
-      "/api/v1/admin/cms-pages/announcements"
+      `/api/v1/admin/projects/${projectSlug}/cms/announcements`
     ),
 
-  putAnnouncementsConfig: (data: CmsAnnouncementsConfig) =>
+  putAnnouncementsConfig: (projectSlug: string, data: CmsAnnouncementsConfig) =>
     api.put<{ success: boolean; announcements: CmsAnnouncementsConfig }>(
-      "/api/v1/admin/cms-pages/announcements",
+      `/api/v1/admin/projects/${projectSlug}/cms/announcements`,
       data
     ),
 
@@ -289,18 +398,21 @@ export const cmsApi = {
    * Public storefront site chrome — flat JSON: **`success`** + layout root keys from the first
    * active section’s **`configValues`** (e.g. `announcement_under_construction`), not nested `announcements.sections`.
    */
-  getPublicNavigation: () =>
+  getPublicNavigation: (projectSlug: string) =>
     api.get<{ success: boolean } & Record<string, unknown>>(
-      PUBLIC_CMS_NAVIGATION_API_PATH
+      publicCmsNavigationApiPath(),
+      { headers: { "x-tenant-slug": projectSlug } }
     ),
 
-  getPublicFooter: () =>
+  getPublicFooter: (projectSlug: string) =>
     api.get<{ success: boolean } & Record<string, unknown>>(
-      PUBLIC_CMS_FOOTER_API_PATH
+      publicCmsFooterApiPath(),
+      { headers: { "x-tenant-slug": projectSlug } }
     ),
 
-  getPublicAnnouncements: () =>
+  getPublicAnnouncements: (projectSlug: string) =>
     api.get<{ success: boolean } & Record<string, unknown>>(
-      PUBLIC_CMS_ANNOUNCEMENTS_API_PATH
+      publicCmsAnnouncementsApiPath(),
+      { headers: { "x-tenant-slug": projectSlug } }
     ),
 };

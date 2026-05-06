@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { CmsCustomTool } from "@/lib/cms/api";
 import { cn } from "@/lib/shared/utils";
 import {
   TYPE_LABEL,
@@ -221,11 +222,13 @@ export function LayoutBuilderBlockBranch({
   parentContainerType,
   onRemove,
   onAddIntoContainer,
+  onAddCustomIntoContainer,
   onKeyChange,
   onDefaultChange,
   onDefaultLinkChange,
   onRequiredChange,
   onMoveBlock,
+  customTools,
 }: {
   block: SectionBlock;
   depth: number;
@@ -240,6 +243,11 @@ export function LayoutBuilderBlockBranch({
     type: SectionBlockType,
     childDepth: number,
   ) => void;
+  onAddCustomIntoContainer: (
+    containerId: string,
+    tool: CmsCustomTool,
+    childDepth: number,
+  ) => void;
   onKeyChange: (id: string, key: string) => void;
   onDefaultChange: (id: string, value: string | undefined) => void;
   onDefaultLinkChange: (
@@ -248,6 +256,7 @@ export function LayoutBuilderBlockBranch({
   ) => void;
   onRequiredChange: (id: string, required: boolean) => void;
   onMoveBlock: (id: string, direction: "up" | "down") => void;
+  customTools?: CmsCustomTool[];
 }) {
   const container = isContainer(block.type);
   const childDepth = depth + 1;
@@ -295,11 +304,13 @@ export function LayoutBuilderBlockBranch({
                 }
                 onRemove={onRemove}
                 onAddIntoContainer={onAddIntoContainer}
+                onAddCustomIntoContainer={onAddCustomIntoContainer}
                 onKeyChange={onKeyChange}
                 onDefaultChange={onDefaultChange}
                 onDefaultLinkChange={onDefaultLinkChange}
                 onRequiredChange={onRequiredChange}
                 onMoveBlock={onMoveBlock}
+                customTools={customTools}
               />
             ))}
           </ul>
@@ -311,6 +322,10 @@ export function LayoutBuilderBlockBranch({
         </p>
         <LayoutBuilderGroupedToolPalette
           onPick={(type) => onAddIntoContainer(block.id, type, childDepth)}
+          customTools={customTools}
+          onPickCustom={(tool) =>
+            onAddCustomIntoContainer(block.id, tool, childDepth)
+          }
         />
       </div>
     </div>

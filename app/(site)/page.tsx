@@ -1,7 +1,16 @@
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-16 text-foreground">
-      <p className="text-sm text-muted-foreground">Public site — content is served via the CMS API.</p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+
+export default async function Home() {
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (session.user.isAdmin) {
+    redirect("/admin");
+  }
+
+  redirect("/dashboard");
 }

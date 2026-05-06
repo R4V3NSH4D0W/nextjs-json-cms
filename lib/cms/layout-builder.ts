@@ -60,6 +60,16 @@ export interface SectionTool {
   group: "content" | "primitive" | "structure";
 }
 
+export interface CustomToolTemplateNode {
+  type?: SectionBlockType;
+  key?: string;
+  fields?: CustomToolTemplateNode[];
+  children?: CustomToolTemplateNode[];
+  defaultStr?: string;
+  defaultLink?: { value?: string; href?: string; target?: string };
+  required?: boolean;
+}
+
 export const SECTION_TOOLS: SectionTool[] = [
   {
     id: "title",
@@ -262,6 +272,123 @@ export function createBlock(
   return base;
 }
 
+function isSectionBlockType(value: string): value is SectionBlockType {
+  return SECTION_TOOLS.some((tool) => tool.id === value);
+}
+
+function normalizeCustomToolNode(
+  input: unknown,
+  path: string
+): CustomToolTemplateNode {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error(`${path} must be an object`);
+  }
+  const raw = input as Record<string, unknown>;
+  const type = typeof raw.type === "string" ? raw.type.trim() : "";
+  const fields = Array.isArray(raw.fields)
+    ? raw.fields
+    : Array.isArray(raw.children)
+      ? raw.children
+      : undefined;
+  const inferredType = type || (fields ? "object" : "");
+  if (!isSectionBlockType(inferredType)) {
+    throw new Error(`${path}.type is invalid`);
+  }
+
+  const node: CustomToolTemplateNode = { type: inferredType };
+  if (typeof raw.key === "string" && raw.key.trim()) {
+    node.key = raw.key.trim();
+  }
+  if (typeof raw.defaultStr === "string") {
+    node.defaultStr = raw.defaultStr;
+  }
+  if (typeof raw.required === "boolean") {
+    node.required = raw.required;
+  }
+  if (type === "link" && raw.defaultLink !== undefined) {
+    if (
+      !raw.defaultLink ||
+      typeof raw.defaultLink !== "object" ||
+      Array.isArray(raw.defaultLink)
+    ) {
+      throw new Error(`${path}.defaultLink must be an object`);
+    }
+    const d = raw.defaultLink as Record<string, unknown>;
+    node.defaultLink = {
+      value: typeof d.value === "string" ? d.value : "",
+      href: typeof d.href === "string" ? d.href : "",
+      target: typeof d.target === "string" ? d.target : "_self",
+    };
+  }
+
+  if (inferredType === "array" || inferredType === "object") {
+    if (!Array.isArray(fields)) {
+      throw new Error(`${path}.fields must be an array for ${inferredType}`);
+    }
+    node.fields = fields.map((child, index) =>
+      normalizeCustomToolNode(child, `${path}.children[${index}]`)
+    );
+  }
+
+  return node;
+}
+
+export function parseCustomToolTemplate(input: unknown): CustomToolTemplateNode {
+  return normalizeCustomToolNode(input, "definition");
+}
+
+function instantiateTemplateNode(
+  template: CustomToolTemplateNode,
+  depth: number,
+  siblingKeys: Set<string>
+): SectionBlock {
+  const templateType: SectionBlockType = template.type ?? "object";
+  const templateKey = template.key?.trim() ?? "";
+  const baseKey =
+    templateKey.length > 0
+      ? uniqueKey(templateKey, siblingKeys)
+      : defaultKeyForType(templateType, depth, siblingKeys);
+
+  const block: SectionBlock = {
+    id: crypto.randomUUID(),
+    type: templateType,
+    key: baseKey,
+    children: [],
+    ...(template.required ? { required: true } : {}),
+  };
+
+  if (template.type === "link") {
+    block.defaultLink = {
+      value: template.defaultLink?.value ?? "",
+      href: template.defaultLink?.href ?? "",
+      target: template.defaultLink?.target ?? "_self",
+    };
+  } else if (template.defaultStr !== undefined) {
+    block.defaultStr = template.defaultStr;
+  }
+
+  const children = template.fields ?? template.children;
+  if ((template.type === "array" || template.type === "object") && children) {
+    const childKeys = new Set<string>();
+    block.children = children.map((child) => {
+      const next = instantiateTemplateNode(child, depth + 1, childKeys);
+      childKeys.add(next.key.trim());
+      return next;
+    });
+  }
+
+  return block;
+}
+
+export function createBlockFromCustomTool(
+  definition: unknown,
+  depth: number,
+  siblingKeys: Set<string>
+): SectionBlock {
+  const template = parseCustomToolTemplate(definition);
+  return instantiateTemplateNode(template, depth, siblingKeys);
+}
+
 export function siblingKeysFrom(blocks: SectionBlock[]): Set<string> {
   return new Set(blocks.map((b) => b.key.trim()).filter(Boolean));
 }
@@ -291,6 +418,38 @@ export function addChildToContainer(
           b.children,
           containerId,
           type,
+          newBlockDepth
+        ),
+      };
+    }
+    return b;
+  });
+}
+
+export function addCustomChildToContainer(
+  blocks: SectionBlock[],
+  containerId: string,
+  definition: unknown,
+  newBlockDepth: number
+): SectionBlock[] {
+  return blocks.map((b) => {
+    if (b.id === containerId && isContainer(b.type)) {
+      const keys = siblingKeysFrom(b.children);
+      return {
+        ...b,
+        children: [
+          ...b.children,
+          createBlockFromCustomTool(definition, newBlockDepth, keys),
+        ],
+      };
+    }
+    if (isContainer(b.type)) {
+      return {
+        ...b,
+        children: addCustomChildToContainer(
+          b.children,
+          containerId,
+          definition,
           newBlockDepth
         ),
       };

@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@/lib/shared/react-query";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import {
   cmsApi,
   type CmsBlockType,
+  type CmsCustomToolDefinition,
   type CmsPageCreateBody,
   type CmsPageUpdateBody,
 } from "@/lib/cms/api";
@@ -16,24 +18,29 @@ export type CmsBlockUpdateInput = {
 
 // Page hooks
 export const useCmsPages = () => {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-pages"],
-    queryFn: () => cmsApi.listPages(),
+    queryKey: ["cms-pages", currentProject?.slug],
+    queryFn: () => cmsApi.listPages(currentProject!.slug),
+    enabled: !!currentProject,
   });
 };
 
 export const useCmsPage = (id: string) => {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-pages", id],
-    queryFn: () => cmsApi.getPage(id),
-    enabled: !!id,
+    queryKey: ["cms-pages", currentProject?.slug, id],
+    queryFn: () => cmsApi.getPage(currentProject!.slug, id),
+    enabled: !!id && !!currentProject,
   });
 };
 
 export const useCreateCmsPage = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CmsPageCreateBody) => cmsApi.createPage(data),
+    mutationFn: (data: CmsPageCreateBody) =>
+      cmsApi.createPage(currentProject!.slug, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       toast.success("Page created successfully");
@@ -45,13 +52,14 @@ export const useCreateCmsPage = () => {
 };
 
 export const useUpdateCmsPage = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: CmsPageUpdateBody }) =>
-      cmsApi.updatePage(id, data),
+      cmsApi.updatePage(currentProject!.slug, id, data),
     onSuccess: (_res, { id }) => {
+      // Prefix-invalidate all cms-pages queries (list + individual).
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
-      queryClient.invalidateQueries({ queryKey: ["cms-pages", id] });
       toast.success("Page updated successfully");
     },
     onError: (error: Error) => {
@@ -61,9 +69,10 @@ export const useUpdateCmsPage = () => {
 };
 
 export const useDeleteCmsPage = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => cmsApi.deletePage(id),
+    mutationFn: (id: string) => cmsApi.deletePage(currentProject!.slug, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       toast.success("Page deleted successfully");
@@ -76,6 +85,7 @@ export const useDeleteCmsPage = () => {
 
 // Block hooks
 export const useAddBlock = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -88,7 +98,7 @@ export const useAddBlock = () => {
         config?: Record<string, unknown>;
         isActive?: boolean;
       };
-    }) => cmsApi.addBlock(pageId, data),
+    }) => cmsApi.addBlock(currentProject!.slug, pageId, data),
     onSuccess: (_res, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       queryClient.invalidateQueries({ queryKey: ["cms-pages", pageId] });
@@ -101,6 +111,7 @@ export const useAddBlock = () => {
 };
 
 export const useUpdateBlock = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -111,7 +122,7 @@ export const useUpdateBlock = () => {
       pageId: string;
       blockId: string;
       data: CmsBlockUpdateInput;
-    }) => cmsApi.updateBlock(blockId, data),
+    }) => cmsApi.updateBlock(currentProject!.slug, blockId, data),
     onSuccess: (_res, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       queryClient.invalidateQueries({ queryKey: ["cms-pages", pageId] });
@@ -124,10 +135,11 @@ export const useUpdateBlock = () => {
 };
 
 export const useDeleteBlock = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ pageId, blockId }: { pageId: string; blockId: string }) =>
-      cmsApi.deleteBlock(blockId),
+      cmsApi.deleteBlock(currentProject!.slug, blockId),
     onSuccess: (_res, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       queryClient.invalidateQueries({ queryKey: ["cms-pages", pageId] });
@@ -140,6 +152,7 @@ export const useDeleteBlock = () => {
 };
 
 export const useReorderBlocks = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -148,7 +161,8 @@ export const useReorderBlocks = () => {
     }: {
       pageId: string;
       orderedBlockIds: string[];
-    }) => cmsApi.reorderBlocks(pageId, orderedBlockIds),
+    }) =>
+      cmsApi.reorderBlocks(currentProject!.slug, pageId, orderedBlockIds),
     onSuccess: (_res, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       queryClient.invalidateQueries({ queryKey: ["cms-pages", pageId] });
@@ -162,21 +176,25 @@ export const useReorderBlocks = () => {
 
 // Layout hooks
 export const useCmsLayouts = () => {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-layouts"],
-    queryFn: () => cmsApi.listLayouts(),
+    queryKey: ["cms-layouts", currentProject?.slug],
+    queryFn: () => cmsApi.listLayouts(currentProject!.slug),
+    enabled: !!currentProject,
   });
 };
 
 export const useCmsLayout = (id: string) => {
+  const { currentProject } = useCurrentProject();
   return useQuery({
-    queryKey: ["cms-layouts", id],
-    queryFn: () => cmsApi.getLayout(id),
-    enabled: !!id,
+    queryKey: ["cms-layouts", currentProject?.slug, id],
+    queryFn: () => cmsApi.getLayout(currentProject!.slug, id),
+    enabled: !!id && !!currentProject,
   });
 };
 
 export const useCreateCmsLayout = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: {
@@ -184,8 +202,9 @@ export const useCreateCmsLayout = () => {
       rootKey: string;
       schema: Record<string, unknown>;
       referenceImageUrl?: string | null;
-    }) => cmsApi.createLayout(data),
+    }) => cmsApi.createLayout(currentProject!.slug, data),
     onSuccess: () => {
+      // Prefix-invalidate all cms-layouts queries (list + individual).
       queryClient.invalidateQueries({ queryKey: ["cms-layouts"] });
       toast.success("Layout created");
     },
@@ -196,6 +215,7 @@ export const useCreateCmsLayout = () => {
 };
 
 export const useUpdateCmsLayout = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -209,10 +229,10 @@ export const useUpdateCmsLayout = () => {
         schema?: Record<string, unknown>;
         referenceImageUrl?: string | null;
       };
-    }) => cmsApi.updateLayout(id, data),
-    onSuccess: (_res, { id }) => {
+    }) => cmsApi.updateLayout(currentProject!.slug, id, data),
+    onSuccess: () => {
+      // Prefix-invalidate all cms-layouts queries (list + individual).
       queryClient.invalidateQueries({ queryKey: ["cms-layouts"] });
-      queryClient.invalidateQueries({ queryKey: ["cms-layouts", id] });
       toast.success("Layout updated");
     },
     onError: (error: Error) => {
@@ -222,9 +242,11 @@ export const useUpdateCmsLayout = () => {
 };
 
 export const useDeleteCmsLayout = () => {
+  const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => cmsApi.deleteLayout(id),
+    mutationFn: (id: string) =>
+      cmsApi.deleteLayout(currentProject!.slug, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cms-layouts"] });
       queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
@@ -232,6 +254,84 @@ export const useDeleteCmsLayout = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to delete layout");
+    },
+  });
+};
+
+// Custom layout tool hooks
+export const useCmsCustomTools = () => {
+  const { currentProject } = useCurrentProject();
+  return useQuery({
+    queryKey: ["cms-tools", currentProject?.slug],
+    queryFn: () => cmsApi.listCustomTools(currentProject!.slug),
+    enabled: !!currentProject,
+  });
+};
+
+export const useCmsCustomTool = (id: string) => {
+  const { currentProject } = useCurrentProject();
+  return useQuery({
+    queryKey: ["cms-tools", currentProject?.slug, id],
+    queryFn: () => cmsApi.getCustomTool(currentProject!.slug, id),
+    enabled: !!currentProject && !!id,
+  });
+};
+
+export const useCreateCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      description?: string | null;
+      definition: CmsCustomToolDefinition;
+    }) => cmsApi.createCustomTool(currentProject!.slug, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      toast.success("Tool created");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create tool");
+    },
+  });
+};
+
+export const useUpdateCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<{
+        name: string;
+        description: string | null;
+        definition: CmsCustomToolDefinition;
+      }>;
+    }) => cmsApi.updateCustomTool(currentProject!.slug, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      toast.success("Tool updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update tool");
+    },
+  });
+};
+
+export const useDeleteCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => cmsApi.deleteCustomTool(currentProject!.slug, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      toast.success("Tool deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete tool");
     },
   });
 };
