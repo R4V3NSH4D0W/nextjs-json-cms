@@ -1,6 +1,6 @@
-# CMS
+# Projects CMS
 
-Next.js app: **media library**, **storefront CMS** (pages, layouts, navigation, footer, announcements), session auth, and Prisma + PostgreSQL.
+Next.js admin app for a **multi-project headless CMS**. Each project owns its own pages, layouts, navigation, footer, announcements, media scope, allowed origins, and API tokens. This repo is the admin/frontend shell; the backend and Prisma live in `../cms-backend-hono`.
 
 ## Why you see “Database `cms` does not exist”
 

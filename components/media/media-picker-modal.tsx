@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useMutation, useQuery, useQueryClient } from "@/lib/shared/react-query";
 import {
   Dialog,
@@ -47,27 +48,25 @@ export function MediaPickerModal({
   multiple = false,
 }: MediaPickerModalProps) {
   const queryClient = useQueryClient();
+  const { currentProject } = useCurrentProject();
   const [currentPath, setCurrentPath] = useState("/");
   const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["media-gallery-picker", currentPath],
     queryFn: async () => {
-      return api.get<MediaLibraryResponse>(`/api/v1/admin/media/gallery/list`, {
+      return api.get<MediaLibraryResponse>(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/list`, {
         params: { folder: currentPath },
       });
     },
-    enabled: open,
+    enabled: open && !!currentProject,
   });
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      return api.post(
-        `/api/v1/admin/media/gallery/upload?folder=${encodeURIComponent(currentPath)}`,
-        formData,
-      );
+      return api.post(`/api/v1/admin/projects/${currentProject!.slug}/media/gallery/upload?folder=${encodeURIComponent(currentPath)}`, formData);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["media-gallery-picker"] });

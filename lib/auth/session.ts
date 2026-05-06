@@ -6,6 +6,7 @@ const SESSION_COOKIE_NAME =
 export type AppUser = {
   id: string;
   email: string;
+  isAdmin: boolean;
 };
 
 export type AppSession = {

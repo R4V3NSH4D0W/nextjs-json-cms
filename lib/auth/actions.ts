@@ -12,7 +12,7 @@ function getApiUrl(): string {
 
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/dashboard";
+    return "";
   }
   return raw;
 }
@@ -41,7 +41,11 @@ export async function loginAction(
     body: JSON.stringify({ email, password }),
   });
 
-  const data = (await res.json()) as { success: boolean; message?: string };
+  const data = (await res.json()) as {
+    success: boolean;
+    message?: string;
+    user?: { id: string; email: string; isAdmin: boolean };
+  };
 
   if (!res.ok || !data.success) {
     return { error: data.message ?? "Invalid email or password." };
@@ -72,62 +76,10 @@ export async function loginAction(
     }
   }
 
-  redirect(callbackUrl);
-}
-
-export async function registerAction(
-  _prev: AuthFormState | undefined,
-  formData: FormData,
-): Promise<AuthFormState> {
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const password = String(formData.get("password") ?? "");
-
-  if (!email || !password) {
-    return { error: "Email and password are required." };
+  if (data.user?.isAdmin) {
+    redirect("/admin");
   }
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
-  }
-
-  const res = await fetch(`${getApiUrl()}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const data = (await res.json()) as { success: boolean; message?: string };
-
-  if (!res.ok || !data.success) {
-    return { error: data.message ?? "Registration failed." };
-  }
-
-  // Forward the Set-Cookie header from Hono
-  const setCookie = res.headers.get("set-cookie");
-  if (setCookie) {
-    const cookieStore = await cookies();
-    for (const part of setCookie.split(/,(?=[^ ])/)) {
-      const [pair, ...opts] = part.trim().split(";");
-      const [name, ...valueParts] = (pair ?? "").split("=");
-      if (!name) continue;
-      const value = valueParts.join("=");
-      const optMap: Record<string, string | boolean> = {};
-      for (const opt of opts) {
-        const [k, v] = opt.trim().split("=");
-        optMap[(k ?? "").toLowerCase()] = v ?? true;
-      }
-      cookieStore.set(name.trim(), value, {
-        httpOnly: true,
-        sameSite: "lax",
-        path: (optMap["path"] as string) || "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: optMap["max-age"] ? Number(optMap["max-age"]) : undefined,
-      });
-    }
-  }
-
-  redirect("/dashboard");
+  redirect(callbackUrl || "/dashboard");
 }
 
 export async function logoutAction(): Promise<void> {

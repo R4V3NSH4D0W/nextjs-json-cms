@@ -13,6 +13,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
 import { CmsPageSeoEditor } from "@/components/cms/cms-page-seo-editor";
 import { Button } from "@/components/ui/button";
@@ -63,11 +64,15 @@ import {
 } from "@/lib/cms/sections-expand-pref";
 import { toast } from "sonner";
 import {
+  clearCmsPageEditTransientDraft,
+  loadCmsPageEditTransientDraft,
   parseCmsPageDraftData,
+  saveCmsPageEditTransientDraft,
   serializeCmsPageDraftData,
 } from "@/lib/cms/cms-page-draft-data";
 
 function CmsPageEditContent() {
+  const { currentProject } = useCurrentProject();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -79,7 +84,7 @@ function CmsPageEditContent() {
   const page = data?.page;
 
   const { data: layoutsRes, isLoading: layoutsLoading } = useCmsLayouts();
-  const layouts = layoutsRes?.layouts ?? [];
+  const layouts = useMemo(() => layoutsRes?.layouts ?? [], [layoutsRes?.layouts]);
 
   const { data: navSite } = useCmsNavigationConfig();
   const { data: footerSite } = useCmsFooterConfig();
@@ -129,7 +134,7 @@ function CmsPageEditContent() {
   const [syncing, setSyncing] = useState(false);
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
-  const [sectionsPrefLoaded, setSectionsPrefLoaded] = useState(false);
+  // Start with pref loaded = false only to read localStorage once on mount.
   const [defaultSectionExpanded, setDefaultSectionExpanded] = useState(true);
 
   const [title, setTitle] = useState("");
@@ -138,60 +143,114 @@ function CmsPageEditContent() {
   const [slots, setSlots] = useState<CmsNewPageLayoutSlot[]>([]);
   const [seo, setSeo] = useState<CmsPageSeoFormValues>(emptyCmsPageSeoFormValues);
 
-  const consumedAddLayoutSearchRef = useRef<string | null>(null);
-  /** Only reset slots from the server when the page payload actually changed (e.g. save or navigation). Avoids React Query refetches overwriting local sections after `addLayoutId` append. */
-  const lastSlotsHydrationKeyRef = useRef<string | null>(null);
+  /**
+   * Tracks which `page.updatedAt` value we last used to hydrate local state so
+   * React Query background refetches don't overwrite unsaved editor changes.
+   * We deliberately use `updatedAt` (not `page.id`) so a successful publish
+   * (which bumps `updatedAt`) correctly resets the editor to fresh server data.
+   */
+  const lastHydratedAtRef = useRef<string | null>(null);
 
+  /**
+   * When true we are mid-flight adding a layout (URL has addLayoutId) and we
+   * must NOT let the server hydration effect stomp the pending slot update.
+   * Cleared as soon as `router.replace` removes the query param.
+   */
+  const addLayoutPendingRef = useRef(false);
+
+  /**
+   * Stable ref for the "consumed" addLayoutId+nonce key. Using a ref (not
+   * state) specifically so the effect that reads it does not trigger itself.
+   */
+  const consumedAddLayoutKeyRef = useRef<string | null>(null);
+
+  // ── Read localStorage pref once on mount ─────────────────────────────────
   useEffect(() => {
     if (!id) return;
     setDefaultSectionExpanded(readSectionsExpandedPref(id));
-    setSectionsPrefLoaded(true);
   }, [id]);
 
+  // ── Hydrate editor from server page data ──────────────────────────────────
+  // We use useLayoutEffect so hydration happens before paint and before the
+  // addLayoutId effect runs (effects run in order, but layout effects run
+  // before paint which helps avoid flicker).
   useLayoutEffect(() => {
     if (!page) return;
-    const hydrationKey = `${page.id}:${page.updatedAt}`;
-    if (lastSlotsHydrationKeyRef.current === hydrationKey) {
+    // Skip hydration while an addLayout apply is in-flight so we don't
+    // overwrite the locally appended slot.
+    if (addLayoutPendingRef.current) return;
+    // Skip if we already hydrated from this exact server snapshot.
+    if (lastHydratedAtRef.current === page.updatedAt) return;
+    lastHydratedAtRef.current = page.updatedAt;
+
+    const transient = loadCmsPageEditTransientDraft(id);
+    clearCmsPageEditTransientDraft(id);
+    if (transient && transient.baseUpdatedAt === page.updatedAt) {
+      setTitle(transient.title);
+      setSlug(transient.slug);
+      setSlots(
+        transient.slots.length > 0 ? transient.slots : blocksToLayoutSlots(page)
+      );
+      setSeo(transient.seo);
+      setPublished(transient.published);
       return;
     }
-    lastSlotsHydrationKeyRef.current = hydrationKey;
+
     const fromDraft = parseCmsPageDraftData(page.draftData);
     if (fromDraft) {
       setTitle(fromDraft.title);
       setSlug(fromDraft.slug);
-      setSlots(fromDraft.slots);
+      setSlots(
+        fromDraft.slots.length > 0 ? fromDraft.slots : blocksToLayoutSlots(page)
+      );
       setSeo(fromDraft.seo);
-    } else {
-      setTitle(page.title);
-      setSlug(page.slug);
-      setSlots(blocksToLayoutSlots(page));
-      setSeo(cmsPageSeoFormValuesFromApi(page));
-    }
-    setPublished(page.published === true);
-  }, [page]);
-
-  useEffect(() => {
-    if (!page) return;
-    const addLayoutId = searchParams.get("addLayoutId");
-    if (!addLayoutId) {
-      consumedAddLayoutSearchRef.current = null;
+      setPublished(page.published === true);
       return;
     }
-    const searchKey = searchParams.toString();
-    if (consumedAddLayoutSearchRef.current === searchKey) return;
-    consumedAddLayoutSearchRef.current = searchKey;
+
+    setTitle(page.title);
+    setSlug(page.slug);
+    setSlots(blocksToLayoutSlots(page));
+    setSeo(cmsPageSeoFormValuesFromApi(page));
+    setPublished(page.published === true);
+  }, [page, id]);
+
+  // ── Apply addLayoutId from URL query param ─────────────────────────────────
+  useEffect(() => {
+    if (!page) return;
+
+    const addLayoutId = searchParams.get("addLayoutId");
+    if (!addLayoutId) {
+      // URL was cleared — allow future server hydrations again.
+      addLayoutPendingRef.current = false;
+      consumedAddLayoutKeyRef.current = null;
+      return;
+    }
+
+    // Build a stable key from addLayoutId + nonce so the same layout can be
+    // added multiple times (each round-trip gets a new nonce).
+    const nonce = searchParams.get("addLayoutNonce") ?? "";
+    const consumeKey = `${addLayoutId}::${nonce}`;
+    if (consumedAddLayoutKeyRef.current === consumeKey) return;
+    consumedAddLayoutKeyRef.current = consumeKey;
+
+    // Block server hydration until we've cleaned the URL.
+    addLayoutPendingRef.current = true;
+
     let cancelled = false;
 
     const applyAddedLayout = async () => {
       let templatePayload: Record<string, unknown> | null = null;
       try {
+        // Look up cache with the correct composite key used by useCmsLayout.
         const cached = queryClient.getQueryData<CmsLayoutResponse>([
           "cms-layouts",
+          currentProject?.slug,
           addLayoutId,
         ]);
         const layout =
           cached?.layout ??
-          (await cmsApi.getLayout(addLayoutId)).layout;
+          (await cmsApi.getLayout(currentProject!.slug, addLayoutId)).layout;
         const schema = layout?.schema;
         if (schema && typeof schema === "object" && !Array.isArray(schema)) {
           templatePayload = buildPayloadTemplateFromSchema(
@@ -205,10 +264,12 @@ function CmsPageEditContent() {
 
       setSlots((prev) => {
         const next = slotsWithAddedLayout(prev, addLayoutId);
-        // Seed the newly added/replaced slot immediately with schema defaults.
+        // Seed the newly added slot with schema defaults immediately,
+        // so the user sees fields right away without a second render.
         if (!templatePayload || Object.keys(templatePayload).length === 0) {
           return next;
         }
+        // Find the last slot that has this layoutId but hasn't been seeded yet.
         for (let i = next.length - 1; i >= 0; i -= 1) {
           const slot = next[i];
           if (slot.layoutId !== addLayoutId) continue;
@@ -225,6 +286,11 @@ function CmsPageEditContent() {
         }
         return next;
       });
+
+      // Clear the URL param now that we've applied the layout.
+      // After replace, the searchParams change triggers this effect again,
+      // but consumedAddLayoutKeyRef guards against double-processing and
+      // the addLayoutId will be null → addLayoutPendingRef is cleared above.
       router.replace(`/dashboard/cms/pages/${id}`, { scroll: false });
       toast.success("Layout added — fill in the fields below.");
     };
@@ -233,7 +299,8 @@ function CmsPageEditContent() {
     return () => {
       cancelled = true;
     };
-  }, [page, searchParams, router, id, queryClient]);
+    // currentProject is stable per-session; including it avoids stale closure.
+  }, [page, searchParams, router, id, queryClient, currentProject]);
 
   const patchSlot = useCallback(
     (slotId: string, patch: Partial<CmsNewPageLayoutSlot>) => {
@@ -269,10 +336,11 @@ function CmsPageEditContent() {
       async (layoutId) => {
         const cached = queryClient.getQueryData<CmsLayoutResponse>([
           "cms-layouts",
+          currentProject?.slug,
           layoutId,
         ]);
         if (cached?.layout) return cached.layout;
-        const res = await cmsApi.getLayout(layoutId);
+        const res = await cmsApi.getLayout(currentProject!.slug, layoutId);
         return res.layout ?? null;
       }
     );
@@ -291,7 +359,7 @@ function CmsPageEditContent() {
           slots,
           seo,
         });
-        await cmsApi.updatePage(id, { draftData: draftPayload });
+        await cmsApi.updatePage(currentProject!.slug, id, { draftData: draftPayload });
         await queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
         await queryClient.invalidateQueries({ queryKey: ["cms-pages", id] });
         toast.success(
@@ -301,7 +369,7 @@ function CmsPageEditContent() {
       }
 
       const snapshot = page;
-      await cmsApi.updatePage(id, {
+      await cmsApi.updatePage(currentProject!.slug, id, {
         title: title.trim(),
         slug: slug.trim() || undefined,
         published,
@@ -312,10 +380,15 @@ function CmsPageEditContent() {
       });
 
       await syncLayoutSlotsToPage({
+        projectSlug: currentProject!.slug,
         pageId: id,
         pageSnapshot: snapshot,
         slots,
       });
+
+      // After a successful publish the server updatedAt changes, so we clear
+      // lastHydratedAtRef to allow re-hydration from fresh server data.
+      lastHydratedAtRef.current = null;
 
       await queryClient.invalidateQueries({ queryKey: ["cms-pages"] });
       await queryClient.invalidateQueries({ queryKey: ["cms-pages", id] });
@@ -500,22 +573,13 @@ function CmsPageEditContent() {
                   </p>
                 ) : null}
                 <CmsLayoutSlotsEditor
-                  key={`${id}-${
-                    sectionsPrefLoaded
-                      ? defaultSectionExpanded
-                        ? "sections-expanded"
-                        : "sections-collapsed"
-                      : "sections-pref-init"
-                  }`}
                   slots={slots}
                   onSlotPatch={patchSlot}
                   onReorderSlots={reorderSlots}
                   onRemoveSlot={removeSlot}
                   layouts={layouts}
                   layoutsLoading={layoutsLoading}
-                  defaultSectionExpanded={
-                    sectionsPrefLoaded ? defaultSectionExpanded : true
-                  }
+                  defaultSectionExpanded={defaultSectionExpanded}
                   expandAllSignal={expandAllSignal}
                   collapseAllSignal={collapseAllSignal}
                   disabled={pending}
@@ -525,7 +589,23 @@ function CmsPageEditContent() {
               <div className="flex flex-row gap-2">
                 <div className="mx-auto flex w-full max-w-4xl justify-center px-4">
                   <Button variant="secondary" size="lg" asChild>
-                    <Link href={returnToLayoutsHref}>Add layout</Link>
+                    <Link
+                      href={returnToLayoutsHref}
+                      onClick={() => {
+                        if (!page) return;
+                        saveCmsPageEditTransientDraft({
+                          pageId: id,
+                          baseUpdatedAt: page.updatedAt,
+                          title,
+                          slug,
+                          published,
+                          slots,
+                          seo,
+                        });
+                      }}
+                    >
+                      Add layout
+                    </Link>
                   </Button>
                 </div>
               </div>

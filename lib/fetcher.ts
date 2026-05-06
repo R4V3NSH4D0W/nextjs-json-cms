@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { toast } from 'sonner';
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const normalizedBaseUrl =
+  rawBaseUrl && rawBaseUrl.length > 0 ? rawBaseUrl.replace(/\/+$/, "") : "";
 
 type FetcherOptions = RequestInit & {
   /**
@@ -18,7 +20,14 @@ type FetcherOptions = RequestInit & {
 async function fetcher<T>(endpoint: string, options: FetcherOptions = {}): Promise<T> {
   const { showErrorToast = true, ...fetchOptions } = options;
 
-  const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
+  // Default to relative `/api/*` routes when NEXT_PUBLIC_API_URL is not configured.
+  // This keeps local dev working through Next.js rewrites/proxy without producing
+  // invalid "undefined/api/..." paths.
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : normalizedBaseUrl
+      ? `${normalizedBaseUrl}${endpoint}`
+      : endpoint;
 
   const headers: Record<string, string> = {
     Accept: 'application/json',

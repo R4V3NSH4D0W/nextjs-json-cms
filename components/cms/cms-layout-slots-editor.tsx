@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -39,6 +39,33 @@ import type { CmsNewPageLayoutSlot } from "@/lib/cms/new-page-draft";
 import type { CmsLayoutListItem } from "@/lib/cms/api";
 import { cn } from "@/lib/shared/utils";
 
+/**
+ * Deep structural equality that is insensitive to key insertion order.
+ * Uses sorted JSON serialisation so {a:1,b:2} === {b:2,a:1}.
+ */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  try {
+    return JSON.stringify(sortedKeys(a)) === JSON.stringify(sortedKeys(b));
+  } catch {
+    return false;
+  }
+}
+
+function sortedKeys(val: unknown): unknown {
+  if (Array.isArray(val)) return val.map(sortedKeys);
+  if (val !== null && typeof val === "object") {
+    const obj = val as Record<string, unknown>;
+    return Object.keys(obj)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, k) => {
+        acc[k] = sortedKeys(obj[k]);
+        return acc;
+      }, {});
+  }
+  return val;
+}
+
 const NO_LAYOUT = "__none__";
 
 function LayoutSlotBody({
@@ -75,28 +102,55 @@ function LayoutSlotBody({
     );
   }, [layout?.schema, layout?.rootKey]);
 
+  // Stable string key derived from the template — changes only when the
+  // schema itself changes, not on every render.
   const templateKey = useMemo(
-    () => (templatePayload ? JSON.stringify(templatePayload) : ""),
+    () => (templatePayload ? JSON.stringify(sortedKeys(templatePayload)) : ""),
     [templatePayload]
   );
 
+  // Track the templateKey we last ran a merge with so we don't re-patch when
+  // nothing structurally changed (prevents the infinite loop with duplicate
+  // layout IDs where mergeLayoutPayloadTemplate returns a new-reference but
+  // structurally identical object and the old JSON.stringify differs only in
+  // key insertion order).
+  const lastMergedTemplateKeyRef = useRef<string>("");
+
   useEffect(() => {
     if (!slot.layoutId || !templatePayload) return;
+
     if (slot.appliedLayoutId !== slot.layoutId) {
+      // Layout changed or was just set — seed with fresh template defaults.
+      lastMergedTemplateKeyRef.current = templateKey;
       onSlotPatch(slot.id, {
         configValues: templatePayload,
         appliedLayoutId: slot.layoutId,
       });
       return;
     }
+
+    // Layout already applied — merge in any new fields that were added to the
+    // schema after the slot was last saved. Skip if the template hasn't changed
+    // since the last merge (key-order-insensitive guard to prevent loops when
+    // multiple slots share the same layoutId and produce new-reference-equal
+    // merged objects).
+    if (lastMergedTemplateKeyRef.current === templateKey) return;
+
     const merged = mergeLayoutPayloadTemplate(
       slot.configValues,
       templatePayload
     );
-    if (JSON.stringify(merged) === JSON.stringify(slot.configValues)) return;
+    // deepEqual is key-order-insensitive — avoids false positives from
+    // mergeLayoutPayloadTemplate returning objects with different key ordering.
+    if (deepEqual(merged, slot.configValues)) {
+      lastMergedTemplateKeyRef.current = templateKey;
+      return;
+    }
+
+    lastMergedTemplateKeyRef.current = templateKey;
     onSlotPatch(slot.id, { configValues: merged });
-    // Intentionally omit slot.configValues from deps: merge runs when layout/schema
-    // changes, not on every field edit.
+    // Intentionally omit slot.configValues from deps: merge runs only when the
+    // layout / schema identity changes (templateKey), not on every field edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- merge uses snapshot when templateKey / layout identity changes
   }, [
     slot.id,
@@ -479,7 +533,7 @@ export function CmsLayoutSlotsEditor({
               layouts={layouts}
               layoutsLoading={layoutsLoading}
               disabled={disabled}
-              canRemove={slots.length > 0}
+              canRemove={slots.length > 1}
               hideLayoutSelect={hideLayoutSelect}
               hideReorder={hideReorder}
               sectionIndex={index + 1}

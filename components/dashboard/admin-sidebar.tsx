@@ -4,16 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  LayoutGrid,
   FileText,
   LayoutTemplate,
+  Trash2,
   Menu,
   PanelBottom,
   Megaphone,
   Images,
+  Hammer,
+  FolderKanban,
+  ShieldCheck,
+  Users,
+  Settings,
+  type LucideIcon,
 } from "lucide-react";
 
+import { useCurrentProject } from "@/components/providers/current-project-provider";
+import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { cn } from "@/lib/shared/utils";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -27,116 +36,224 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const mainNav = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/media", label: "Media", icon: Images },
-] as const;
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
 
-const cmsNav = [
-  { href: "/dashboard/cms", label: "Overview", icon: LayoutGrid },
-  { href: "/dashboard/cms/pages", label: "Pages", icon: FileText },
-  { href: "/dashboard/cms/layouts", label: "Layouts", icon: LayoutTemplate },
-  { href: "/dashboard/cms/navigation", label: "Navigation", icon: Menu },
-  { href: "/dashboard/cms/footer", label: "Footer", icon: PanelBottom },
+const platformNav: NavItem[] = [
+  { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/projects", label: "Projects", icon: FolderKanban },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/audit", label: "Audit", icon: ShieldCheck },
+];
+
+const projectMainNavBase: NavItem[] = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  {
+    href: "/dashboard/media",
+    label: "Media",
+    icon: Images,
+  },
+];
+
+const cmsNav: NavItem[] = [
+  {
+    href: "/dashboard/cms/pages",
+    label: "Pages",
+    icon: FileText,
+  },
+  {
+    href: "/dashboard/cms/layouts",
+    label: "Layouts",
+    icon: LayoutTemplate,
+  },
+  {
+    href: "/dashboard/cms/tools",
+    label: "Tools",
+    icon: Hammer,
+  },
+  {
+    href: "/dashboard/cms/navigation",
+    label: "Navigation",
+    icon: Menu,
+  },
+  {
+    href: "/dashboard/cms/footer",
+    label: "Footer",
+    icon: PanelBottom,
+  },
   {
     href: "/dashboard/cms/announcements",
     label: "Announcements",
     icon: Megaphone,
   },
-] as const;
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    icon: Settings,
+  },
+];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  if (href === "/dashboard/cms") return pathname === "/dashboard/cms";
-  if (href === "/dashboard/media")
-    return pathname === "/dashboard/media" || pathname.startsWith("/dashboard/media/");
+  if (href === "/dashboard" || href === "/admin") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  mode = "dashboard",
+}: {
+  mode?: "admin" | "dashboard";
+}) {
   const pathname = usePathname();
+  const { currentProject, currentAccess } = useCurrentProject();
+  const { isAdmin } = useCurrentUser();
+
+  const canManageProject = isAdmin || currentAccess?.canManageProject === true;
+  const projectMainNav: NavItem[] = canManageProject
+    ? [
+        ...projectMainNavBase,
+        { href: "/dashboard/recycle-bin", label: "Recycle Bin", icon: Trash2 },
+      ]
+    : projectMainNavBase;
+
+  const visibleProjectMainNav = projectMainNav;
+  const visibleCmsNav = cmsNav;
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar" collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+    <Sidebar
+      className="border-r border-sidebar-border bg-sidebar"
+      collapsible="icon"
+    >
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-3.5">
         <div className="flex items-center gap-2">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border bg-primary text-sm font-bold text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-primary/95 text-sm font-semibold text-primary-foreground"
             aria-hidden
           >
-            C
+            {mode === "admin" ? "A" : "D"}
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              CMS
+              {mode === "admin" ? "Admin" : "Dashboard"}
             </p>
-            <p className="text-xs text-muted-foreground">Admin</p>
+            <p className="text-xs text-muted-foreground">
+              {mode === "admin" ? "Control center" : (currentProject?.name ?? "No project")}
+            </p>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="scrollbar-hide gap-0 p-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-            Main
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNav.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(pathname, item.href);
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      className={cn(
-                        active &&
-                          "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <Icon className="size-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {mode === "admin" ? (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
+              Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {platformNav.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        className={cn(
+                          active &&
+                            "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
+                        )}
+                      >
+                        <Link href={item.href}>
+                          <Icon className="size-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
+                Main
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleProjectMainNav.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(pathname, item.href);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className={cn(
+                            active &&
+                              "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
+                          )}
+                        >
+                          <Link href={item.href}>
+                            <Icon className="size-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-wider">
-            Storefront CMS
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {cmsNav.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(pathname, item.href);
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      className={cn(
-                        active &&
-                          "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <Icon className="size-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroup className="mt-4">
+              <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
+                Content
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleCmsNav.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(pathname, item.href);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className={cn(
+                            active &&
+                              "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
+                          )}
+                        >
+                          <Link href={item.href}>
+                            <Icon className="size-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
+      {mode === "dashboard" && isAdmin && (
+        <div className="mt-auto p-4 border-t border-sidebar-border group-data-[collapsible=icon]:hidden">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 w-full text-xs font-medium"
+          >
+            <Link href="/admin">Return to admin</Link>
+          </Button>
+        </div>
+      )}
       <SidebarRail />
     </Sidebar>
   );

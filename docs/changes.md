@@ -173,3 +173,86 @@
 | `lib/http/client-ip.ts` | Used by `lib/middleware/rate-limit.ts` (Upstash IP key) |
 | `lib/middleware/rate-limit.ts` | Upstash Redis rate limiter — runs in Next.js proxy |
 | `lib/cms/**` | All client-side CMS UI utilities, types, builders — frontend only, no DB |
+
+---
+
+## 5. Multi-Project Dashboard and Role-Aware UX
+
+Date: 2026-04-20
+
+This pass moved dashboard behavior from single-project assumptions to explicit current-project context, added role-aware UI states, and aligned CMS/media/public API paths with project-scoped backend routes.
+
+### 5.1 Added files
+
+| File | Description |
+|---|---|
+| `components/providers/current-user-provider.tsx` | Client context for user role (`isAdmin`) |
+| `components/providers/current-project-provider.tsx` | Client context for `projects[]` and selected `currentProject` |
+| `lib/projects/api.ts` | Typed admin project API client (list/get/create/update + tokens CRUD) |
+| `lib/projects/current-project.ts` | Cookie-based selected project resolver (`cms-project`) |
+| `app/dashboard/projects/page.tsx` | Projects index page with admin-only create form and shared project list |
+| `app/dashboard/projects/[slug]/page.tsx` | Per-project settings and API token management UI |
+| `app/dashboard/projects/select/route.ts` | Route handler that switches current project via cookie then redirects |
+
+### 5.2 Updated dashboard shell and navigation
+
+| File | Change |
+|---|---|
+| `app/dashboard/layout.tsx` | Fetches visible projects from backend, resolves current project, passes role + project state into shell |
+| `components/dashboard/admin-dashboard-shell.tsx` | Wrapped shell in current-user/current-project providers |
+| `components/dashboard/admin-header.tsx` | Displays role badge and project switcher dropdown |
+| `components/dashboard/admin-sidebar.tsx` | Added Projects nav item, role-aware subtitle, and project-content labeling |
+| `app/dashboard/page.tsx` | Overview stats now query current project endpoints; empty-state message for users with no assigned projects |
+
+### 5.3 Project-scoped CMS and media client updates
+
+| File | Change |
+|---|---|
+| `lib/cms/api.ts` | All admin/public CMS methods now require `projectSlug`; moved paths to `/api/v1/admin/projects/:slug/cms/*` and `/api/v1/projects/:slug/*` |
+| `hooks/use-cms.ts` | Query keys and mutations are now project-aware via `useCurrentProject()` |
+| `hooks/use-cms-site-content.ts` | Site chrome hooks now read/write per-project and include `projectSlug` in query keys |
+| `lib/cms/site-content-storage.ts` | LocalStorage keys now namespaced per project slug |
+| `lib/cms/public-site-api-paths.ts` | Replaced constants with project-aware path helpers |
+| `lib/cms/sync-layout-slots.ts` | Sync pipeline now requires `projectSlug` for all block/page operations |
+| `app/dashboard/media/page.tsx` | Media operations switched to project-scoped admin media endpoints |
+| `components/media/media-picker-modal.tsx` | Media picker upload/list now project-scoped |
+
+### 5.4 CMS page-level UI updates
+
+Project-aware fetching and public-link path generation were applied to:
+
+- `app/dashboard/cms/pages/page.tsx`
+- `app/dashboard/cms/pages/[id]/page.tsx`
+- `app/dashboard/cms/new/page.tsx`
+- `app/dashboard/cms/navigation/page.tsx`
+- `app/dashboard/cms/footer/page.tsx`
+- `app/dashboard/cms/announcements/page.tsx`
+
+### 5.5 Session model alignment
+
+| File | Change |
+|---|---|
+| `lib/auth/session.ts` | Extended `AppUser` with `isAdmin` to match backend auth payload |
+
+Result:
+- Admin users can create/manage projects and tokens.
+- Non-admin users see only accessible projects and role-appropriate UI.
+- CMS/media/public API requests consistently target the selected project slug.
+
+### 5.6 Project Settings UX Refactor (Component-Based)
+
+Date: 2026-04-20
+
+This pass redesigned project settings to reduce confusion and split the page into reusable dashboard components.
+
+| File | Change |
+|---|---|
+| `components/dashboard/projects/project-settings-sections.tsx` | New component module with reusable sections: `ProjectSettingsHero`, `ProjectProfileCard`, `ProjectTokensCard`, `ProjectGovernanceCard` |
+| `app/dashboard/projects/[slug]/page.tsx` | Refactored page to orchestration-only logic with section components, clearer visual hierarchy, and tabs-based governance area (Members / Features) |
+
+UX improvements delivered:
+- Clear top-level project context panel with role and management status badges.
+- Profile and API token operations grouped into distinct purpose-driven cards.
+- Permissions area moved to tabbed navigation to avoid overloaded single-column forms.
+- Members flow now highlights role, grants, and actions in a consistent card pattern.
+- Feature switches presented in a dedicated tab with concise descriptions and stateful controls.

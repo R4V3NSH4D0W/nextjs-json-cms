@@ -56,6 +56,10 @@ const nextConfig: NextConfig = {
         port: "4000",
         pathname: "/api/media/**",
       },
+      {
+        protocol: "https",
+        hostname:'ng4mq8bt-3000.inc1.devtunnels.ms'
+      }
     ],
   },
 };
