@@ -101,5 +101,5 @@ jobs:
               --network "$DOCKER_NETWORK" \
               -e NODE_ENV=production \
               -e NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
-              -p "3000:3000" \
+              -p "3003:3000" \
               "$FRONTEND_IMAGE"
