@@ -1,14 +1,27 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getPublicOrigin } from "@/lib/http/public-origin";
 import { CURRENT_PROJECT_COOKIE } from "@/lib/projects/current-project";
 import type { ProjectSummary } from "@/lib/projects/api";
+
+function safeRelativeRedirect(raw: string): string {
+  const path = raw.trim() || "/dashboard";
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    return "/dashboard";
+  }
+  return path;
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const slug = url.searchParams.get("slug")?.trim();
-  const redirectTo = url.searchParams.get("redirect")?.trim() || "/dashboard";
+  const redirectTo = safeRelativeRedirect(
+    url.searchParams.get("redirect")?.trim() || "/dashboard",
+  );
+  const redirectUrl = new URL(redirectTo, `${getPublicOrigin(request)}/`);
+
   if (!slug) {
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    return NextResponse.redirect(redirectUrl);
   }
 
   const cookieStore = await cookies();
@@ -34,7 +47,7 @@ export async function GET(request: Request) {
   }
 
   if (!canSelectSlug) {
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    return NextResponse.redirect(redirectUrl);
   }
 
   cookieStore.set(CURRENT_PROJECT_COOKIE, slug, {
@@ -43,5 +56,5 @@ export async function GET(request: Request) {
     httpOnly: false,
   });
 
-  return NextResponse.redirect(new URL(redirectTo, request.url));
+  return NextResponse.redirect(redirectUrl);
 }

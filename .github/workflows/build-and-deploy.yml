@@ -72,6 +72,7 @@ jobs:
         env:
           FRONTEND_IMAGE: lenishmagar/nextjs-json-cms:latest
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          APP_URL: ${{ vars.APP_URL || 'https://cmsdashboard.devfy.codes' }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
         with:
@@ -79,13 +80,14 @@ jobs:
           username: ${{ secrets.PROD_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT != '' && secrets.SSH_PORT || '22' }}
-          envs: FRONTEND_IMAGE,NEXT_PUBLIC_API_URL,DOCKER_USERNAME,DOCKER_TOKEN
+          envs: FRONTEND_IMAGE,NEXT_PUBLIC_API_URL,APP_URL,DOCKER_USERNAME,DOCKER_TOKEN
           script: |
             set -euo pipefail
 
             APP_DIR="/home/lenish/cms"
             DOCKER_NETWORK="luxstore-network"
             NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4000}"
+            APP_URL="${APP_URL:-https://cmsdashboard.devfy.codes}"
 
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
@@ -101,5 +103,6 @@ jobs:
               --network "$DOCKER_NETWORK" \
               -e NODE_ENV=production \
               -e NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
+              -e APP_URL="$APP_URL" \
               -p "3004:3000" \
               "$FRONTEND_IMAGE"
