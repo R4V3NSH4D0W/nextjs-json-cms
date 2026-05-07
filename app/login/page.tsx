@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
-import { getSession } from "@/lib/auth/session";
+import { getSession, isRegistrationOpen } from "@/lib/auth/session";
 
 export default async function LoginPage({
   searchParams,
@@ -15,6 +16,7 @@ export default async function LoginPage({
 
   const params = await searchParams;
   const callbackUrl = params.callbackUrl ?? "/dashboard";
+  const registrationOpen = await isRegistrationOpen();
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-16 text-foreground">
@@ -25,6 +27,17 @@ export default async function LoginPage({
         <div className="mt-10">
           <LoginForm callbackUrl={callbackUrl} />
         </div>
+        {registrationOpen ? (
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            First-time setup?{" "}
+            <Link
+              href="/register"
+              className="text-foreground underline underline-offset-4"
+            >
+              Create the initial admin account
+            </Link>
+          </p>
+        ) : null}
       </div>
     </main>
   );

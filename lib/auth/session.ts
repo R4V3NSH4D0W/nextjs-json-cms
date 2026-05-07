@@ -19,6 +19,23 @@ function getApiUrl(): string {
   );
 }
 
+export async function isRegistrationOpen(): Promise<boolean> {
+  try {
+    const res = await fetch(`${getApiUrl()}/api/auth/register/status`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return false;
+
+    const data = (await res.json()) as {
+      success: boolean;
+      registrationOpen?: boolean;
+    };
+    return Boolean(data.success && data.registrationOpen);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Current session — validated by calling the Hono backend's GET /api/auth/me.
  * Use in Server Components, Route Handlers, and Server Actions.
