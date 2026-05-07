@@ -20,12 +20,14 @@ type FetcherOptions = RequestInit & {
 async function fetcher<T>(endpoint: string, options: FetcherOptions = {}): Promise<T> {
   const { showErrorToast = true, ...fetchOptions } = options;
 
-  // Default to relative `/api/*` routes when NEXT_PUBLIC_API_URL is not configured.
-  // This keeps local dev working through Next.js rewrites/proxy without producing
-  // invalid "undefined/api/..." paths.
+  // In the browser, always use relative `/api/*` so session cookies stay same-origin
+  // and flow through Next.js rewrites to the backend.
+  // On the server, allow absolute NEXT_PUBLIC_API_URL when configured.
   const url = endpoint.startsWith('http')
     ? endpoint
-    : normalizedBaseUrl
+    : typeof window !== 'undefined'
+      ? endpoint
+      : normalizedBaseUrl
       ? `${normalizedBaseUrl}${endpoint}`
       : endpoint;
 

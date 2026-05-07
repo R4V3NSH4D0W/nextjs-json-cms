@@ -7,6 +7,7 @@ export type AppUser = {
   id: string;
   email: string;
   isAdmin: boolean;
+  userType?: "super_admin" | "admin" | "member";
 };
 
 export type AppSession = {

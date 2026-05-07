@@ -44,7 +44,12 @@ export async function loginAction(
   const data = (await res.json()) as {
     success: boolean;
     message?: string;
-    user?: { id: string; email: string; isAdmin: boolean };
+    user?: {
+      id: string;
+      email: string;
+      isAdmin: boolean;
+      userType?: "super_admin" | "admin" | "member";
+    };
   };
 
   if (!res.ok || !data.success) {
@@ -111,7 +116,12 @@ export async function registerAction(
   const data = (await res.json()) as {
     success: boolean;
     message?: string;
-    user?: { id: string; email: string; isAdmin: boolean };
+    user?: {
+      id: string;
+      email: string;
+      isAdmin: boolean;
+      userType?: "super_admin" | "admin" | "member";
+    };
   };
 
   if (!res.ok || !data.success) {
