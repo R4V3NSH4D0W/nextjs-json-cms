@@ -3,6 +3,7 @@ import type { IconType } from "react-icons";
 import {
   FiBox,
   FiCalendar,
+  FiDatabase,
   FiExternalLink,
   FiFeather,
   FiFileText,
@@ -28,6 +29,7 @@ export type SectionBlockType =
   | "url"
   | "date"
   | "link"
+  | "collection_ref"
   | "array"
   | "object";
 
@@ -47,6 +49,10 @@ export interface SectionBlock {
    * When `type` is `link`, optional preset `{ value, href, target }` exported as `default`.
    */
   defaultLink?: { value: string; href: string; target: string };
+  /** Collection key used by `collection_ref` fields. */
+  collectionKey?: string;
+  /** For `collection_ref`: true => array of ids, false => single id. */
+  multiple?: boolean;
   /** When true, exported as `required: true` in schema JSON (editors must fill before save). */
   required?: boolean;
 }
@@ -67,6 +73,8 @@ export interface CustomToolTemplateNode {
   children?: CustomToolTemplateNode[];
   defaultStr?: string;
   defaultLink?: { value?: string; href?: string; target?: string };
+  collectionKey?: string;
+  multiple?: boolean;
   required?: boolean;
 }
 
@@ -104,6 +112,13 @@ export const SECTION_TOOLS: SectionTool[] = [
     name: "Link",
     description: "Label, URL, and open target",
     icon: FiExternalLink,
+    group: "content",
+  },
+  {
+    id: "collection_ref",
+    name: "Collection ref",
+    description: "Reference reusable collection items",
+    icon: FiDatabase,
     group: "content",
   },
   {
@@ -176,6 +191,7 @@ export const TYPE_LABEL: Record<SectionBlockType, string> = {
   url: "URL",
   date: "Date",
   link: "Link",
+  collection_ref: "Collection ref",
   array: "Array",
   object: "Object",
 };
@@ -192,6 +208,7 @@ export const TYPE_SHORT: Record<SectionBlockType, string> = {
   url: "url",
   date: "date",
   link: "lnk",
+  collection_ref: "ref",
   array: "arr",
   object: "obj",
 };
@@ -211,6 +228,7 @@ const ROOT_DEFAULT_KEY: Partial<Record<SectionBlockType, string>> = {
   image: "image",
   icon: "icon",
   link: "link",
+  collection_ref: "references",
   array: "items",
   object: "object",
 };
@@ -228,6 +246,7 @@ const NESTED_DEFAULT_KEY: Record<SectionBlockType, string> = {
   url: "url",
   date: "date",
   link: "link",
+  collection_ref: "references",
   array: "items",
   object: "object",
 };
@@ -269,6 +288,13 @@ export function createBlock(
       defaultLink: { value: "", href: "", target: "_self" },
     };
   }
+  if (type === "collection_ref") {
+    return {
+      ...base,
+      collectionKey: "testimonials",
+      multiple: true,
+    };
+  }
   return base;
 }
 
@@ -304,6 +330,12 @@ function normalizeCustomToolNode(
   }
   if (typeof raw.required === "boolean") {
     node.required = raw.required;
+  }
+  if (typeof raw.collectionKey === "string" && raw.collectionKey.trim()) {
+    node.collectionKey = raw.collectionKey.trim();
+  }
+  if (typeof raw.multiple === "boolean") {
+    node.multiple = raw.multiple;
   }
   if (type === "link" && raw.defaultLink !== undefined) {
     if (
@@ -365,6 +397,10 @@ function instantiateTemplateNode(
     };
   } else if (template.defaultStr !== undefined) {
     block.defaultStr = template.defaultStr;
+  }
+  if (template.type === "collection_ref") {
+    block.collectionKey = template.collectionKey?.trim() || "testimonials";
+    block.multiple = template.multiple !== false;
   }
 
   const children = template.fields ?? template.children;
@@ -551,6 +587,46 @@ export function updateBlockRequired(
   });
 }
 
+export function updateBlockCollectionKey(
+  blocks: SectionBlock[],
+  id: string,
+  collectionKey: string
+): SectionBlock[] {
+  return blocks.map((b) => {
+    if (b.id === id) {
+      if (b.type !== "collection_ref") return b;
+      return { ...b, collectionKey };
+    }
+    if (isContainer(b.type)) {
+      return {
+        ...b,
+        children: updateBlockCollectionKey(b.children, id, collectionKey),
+      };
+    }
+    return b;
+  });
+}
+
+export function updateBlockCollectionMultiple(
+  blocks: SectionBlock[],
+  id: string,
+  multiple: boolean
+): SectionBlock[] {
+  return blocks.map((b) => {
+    if (b.id === id) {
+      if (b.type !== "collection_ref") return b;
+      return { ...b, multiple };
+    }
+    if (isContainer(b.type)) {
+      return {
+        ...b,
+        children: updateBlockCollectionMultiple(b.children, id, multiple),
+      };
+    }
+    return b;
+  });
+}
+
 export function duplicateKeysAmong(blocks: SectionBlock[]): Set<string> {
   const counts = new Map<string, number>();
   for (const b of blocks) {
@@ -669,6 +745,18 @@ function blockToExportJson(block: SectionBlock): Record<string, unknown> {
     };
     const ld = leafDefaultToExportLink(block.defaultLink);
     if (ld !== undefined) out.default = ld;
+    if (block.required) out.required = true;
+    return out;
+  }
+  if (block.type === "collection_ref") {
+    const out: Record<string, unknown> = {
+      type: "collection_ref",
+      key: block.key.trim(),
+      collectionKey: block.collectionKey?.trim() || "testimonials",
+      multiple: block.multiple !== false,
+    };
+    const d = leafDefaultToExport(block.type, block.defaultStr);
+    if (d !== undefined) out.default = d;
     if (block.required) out.required = true;
     return out;
   }

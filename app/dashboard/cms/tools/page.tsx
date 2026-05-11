@@ -348,6 +348,8 @@ export default function CmsToolsListPage() {
         description="This cannot be undone."
         confirmLabel="Delete"
         cancelLabel="Cancel"
+        confirmationText={deleteTarget?.name}
+        confirmationLabel="Type the custom tool name to confirm."
         destructive
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);

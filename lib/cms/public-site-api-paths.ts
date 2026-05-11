@@ -23,6 +23,10 @@ export function publicCmsPageApiPath(slugOrId: string) {
   return `/api/v1/pages/${encodeURIComponent(slugOrId)}`;
 }
 
+export function publicCmsCollectionApiPath(key: string) {
+  return `/api/v1/collections/${encodeURIComponent(key)}`;
+}
+
 /** Short label for long API paths (middle ellipsis). */
 export function trimPublicApiPathDisplay(path: string, max = 42): string {
   const t = path.trim();

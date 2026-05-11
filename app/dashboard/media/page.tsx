@@ -16,6 +16,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -55,12 +56,19 @@ interface MediaLibraryResponse {
   }[];
 }
 
+type MediaDeleteTarget =
+  | { type: "folder"; name: string }
+  | { type: "file"; file: MediaLibraryResponse["files"][number] };
+
 export default function MediaLibraryPage() {
   const { currentProject } = useCurrentProject();
   const queryClient = useQueryClient();
   const [currentPath, setCurrentPath] = useState("/");
   const [newFolderName, setNewFolderName] = useState("");
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MediaDeleteTarget | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pasteUploadRef = useRef(false);
 
@@ -137,7 +145,7 @@ export default function MediaLibraryPage() {
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [uploadMutation.mutate, uploadMutation.isPending]);
+  }, [uploadMutation]);
 
   const deleteFileMutation = useMutation({
     mutationFn: async (file: { id: string; url: string }) => {
@@ -172,9 +180,56 @@ export default function MediaLibraryPage() {
 
   const folders = data?.folders ?? [];
   const files = data?.files ?? [];
+  const deleteTargetName =
+    deleteTarget?.type === "folder"
+      ? deleteTarget.name
+      : deleteTarget?.file.name;
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-6">
+      <AlertDialog
+        open={deleteTarget !== null}
+        title={
+          deleteTarget?.type === "folder"
+            ? `Delete folder "${deleteTarget.name}"?`
+            : deleteTarget?.type === "file"
+              ? `Delete image "${deleteTarget.file.name}"?`
+              : "Delete media?"
+        }
+        description={
+          deleteTarget?.type === "folder"
+            ? "This deletes the folder and can affect CMS image references that use files inside it."
+            : "This deletes the image and can break CMS fields or pages that reference this URL."
+        }
+        confirmLabel={
+          deleteTarget?.type === "folder" ? "Delete folder" : "Delete image"
+        }
+        confirmationText={deleteTargetName}
+        confirmationLabel={
+          deleteTarget?.type === "folder"
+            ? "Type the folder name to confirm."
+            : "Type the image filename to confirm."
+        }
+        destructive
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        onConfirm={
+          deleteTarget
+            ? async () => {
+                if (deleteTarget.type === "folder") {
+                  await deleteFolderMutation.mutateAsync(deleteTarget.name);
+                } else {
+                  await deleteFileMutation.mutateAsync({
+                    id: deleteTarget.file.id,
+                    url: deleteTarget.file.url,
+                  });
+                }
+                setDeleteTarget(null);
+              }
+            : undefined
+        }
+      />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           {currentPath !== "/" && (
@@ -306,7 +361,9 @@ export default function MediaLibraryPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => deleteFolderMutation.mutate(folder)}
+                          onClick={() =>
+                            setDeleteTarget({ type: "folder", name: folder })
+                          }
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -338,10 +395,7 @@ export default function MediaLibraryPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={() =>
-                            deleteFileMutation.mutate({
-                              id: file.id,
-                              url: file.url,
-                            })
+                            setDeleteTarget({ type: "file", file })
                           }
                           className="text-destructive focus:text-destructive"
                         >

@@ -4,11 +4,11 @@ import {
   type Dispatch,
   type ReactNode,
   type SetStateAction,
-  useEffect,
   useId,
   useMemo,
   useState,
 } from "react";
+import Image from "next/image";
 import {
   DndContext,
   closestCenter,
@@ -48,6 +48,13 @@ import {
 } from "@/lib/cms/layout-payload";
 import { cn } from "@/lib/shared/utils";
 import { CmsReferenceScreenshotField } from "@/components/cms/cms-reference-screenshot-field";
+import { useCmsCollectionItems } from "@/hooks/use-cms";
+import { absoluteApiUrl } from "@/lib/cms/absolute-url";
+import {
+  findCollectionItemPreviewImage,
+  type CmsCollectionItemPreviewImage,
+} from "@/lib/cms/collection-item-image";
+import type { CmsCollectionItem } from "@/lib/cms/api";
 import {
   Select,
   SelectContent,
@@ -58,6 +65,25 @@ import {
 
 function newSortRowId(): string {
   return crypto.randomUUID();
+}
+
+function resolveStateAction<T>(action: SetStateAction<T>, previous: T): T {
+  return typeof action === "function"
+    ? (action as (value: T) => T)(previous)
+    : action;
+}
+
+function rowIdsForLength(previous: string[], itemCount: number): string[] {
+  if (previous.length === itemCount) return previous;
+  if (itemCount > previous.length) {
+    return [
+      ...previous,
+      ...Array.from({ length: itemCount - previous.length }, () =>
+        newSortRowId(),
+      ),
+    ];
+  }
+  return previous.slice(0, itemCount);
 }
 
 function reorderRecordByFieldIndices(
@@ -90,21 +116,130 @@ function useRowIdsSyncedToLength(itemCount: number): [
     Array.from({ length: itemCount }, () => newSortRowId()),
   );
 
-  useEffect(() => {
-    setIds((prev) => {
-      if (prev.length === itemCount) return prev;
-      if (itemCount > prev.length) {
-        const extra = Array.from(
-          { length: itemCount - prev.length },
-          () => newSortRowId(),
-        );
-        return [...prev, ...extra];
-      }
-      return prev.slice(0, itemCount);
-    });
-  }, [itemCount]);
+  const syncedIds = rowIdsForLength(ids, itemCount);
+  if (syncedIds !== ids) {
+    setIds(syncedIds);
+  }
 
-  return [ids, setIds];
+  return [syncedIds, setIds];
+}
+
+function initialExpandedFromSignals(
+  defaultExpanded: boolean,
+  expandAllSignal: number,
+  collapseAllSignal: number,
+): boolean {
+  if (collapseAllSignal > 0) return false;
+  if (expandAllSignal > 0) return true;
+  return defaultExpanded;
+}
+
+function useExpansionSignals(
+  defaultExpanded: boolean,
+  expandAllSignal: number,
+  collapseAllSignal: number,
+): [boolean, Dispatch<SetStateAction<boolean>>] {
+  const [state, setState] = useState(() => ({
+    isExpanded: initialExpandedFromSignals(
+      defaultExpanded,
+      expandAllSignal,
+      collapseAllSignal,
+    ),
+    expandAllSignal,
+    collapseAllSignal,
+  }));
+
+  const expandChanged =
+    expandAllSignal > 0 && state.expandAllSignal !== expandAllSignal;
+  const collapseChanged =
+    collapseAllSignal > 0 && state.collapseAllSignal !== collapseAllSignal;
+
+  let isExpanded = state.isExpanded;
+  if (expandChanged || collapseChanged) {
+    isExpanded = collapseChanged ? false : true;
+    setState({ isExpanded, expandAllSignal, collapseAllSignal });
+  } else if (
+    state.expandAllSignal !== expandAllSignal ||
+    state.collapseAllSignal !== collapseAllSignal
+  ) {
+    setState((prev) => ({ ...prev, expandAllSignal, collapseAllSignal }));
+  }
+
+  const setIsExpanded: Dispatch<SetStateAction<boolean>> = (next) => {
+    setState((prev) => ({
+      ...prev,
+      isExpanded: resolveStateAction(next, prev.isExpanded),
+    }));
+  };
+
+  return [isExpanded, setIsExpanded];
+}
+
+function useArrayExpansionSignals(
+  expandAllSignal: number,
+  collapseAllSignal: number,
+): {
+  isArrayExpanded: boolean;
+  setIsArrayExpanded: Dispatch<SetStateAction<boolean>>;
+  collapsedArrayItems: Record<number, boolean>;
+  setCollapsedArrayItems: Dispatch<SetStateAction<Record<number, boolean>>>;
+} {
+  const [state, setState] = useState(() => ({
+    isArrayExpanded: initialExpandedFromSignals(
+      true,
+      expandAllSignal,
+      collapseAllSignal,
+    ),
+    collapsedArrayItems: {} as Record<number, boolean>,
+    expandAllSignal,
+    collapseAllSignal,
+  }));
+
+  const expandChanged =
+    expandAllSignal > 0 && state.expandAllSignal !== expandAllSignal;
+  const collapseChanged =
+    collapseAllSignal > 0 && state.collapseAllSignal !== collapseAllSignal;
+
+  let isArrayExpanded = state.isArrayExpanded;
+  let collapsedArrayItems = state.collapsedArrayItems;
+  if (expandChanged || collapseChanged) {
+    isArrayExpanded = collapseChanged ? false : true;
+    collapsedArrayItems = expandChanged ? {} : collapsedArrayItems;
+    setState({
+      isArrayExpanded,
+      collapsedArrayItems,
+      expandAllSignal,
+      collapseAllSignal,
+    });
+  } else if (
+    state.expandAllSignal !== expandAllSignal ||
+    state.collapseAllSignal !== collapseAllSignal
+  ) {
+    setState((prev) => ({ ...prev, expandAllSignal, collapseAllSignal }));
+  }
+
+  const setIsArrayExpanded: Dispatch<SetStateAction<boolean>> = (next) => {
+    setState((prev) => ({
+      ...prev,
+      isArrayExpanded: resolveStateAction(next, prev.isArrayExpanded),
+    }));
+  };
+
+  const setCollapsedArrayItems: Dispatch<
+    SetStateAction<Record<number, boolean>>
+  > = (next) => {
+    setState((prev) => ({
+      ...prev,
+      collapsedArrayItems: resolveStateAction(next, prev.collapsedArrayItems),
+    }));
+  };
+
+  return {
+    isArrayExpanded,
+    setIsArrayExpanded,
+    collapsedArrayItems,
+    setCollapsedArrayItems,
+  };
 }
 
 function fieldLabel(key: string, type: string): string {
@@ -130,6 +265,50 @@ function FieldLabelLine({
       ) : null}
       {def.required ? <span className="sr-only"> (required)</span> : null}
     </Label>
+  );
+}
+
+function CollectionReferenceImagePreview({
+  previewImage,
+  title,
+}: {
+  previewImage: CmsCollectionItemPreviewImage | null;
+  title: string;
+}) {
+  if (!previewImage) return null;
+
+  return (
+    <span className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md border bg-muted">
+      <Image
+        src={absoluteApiUrl(previewImage.url)}
+        alt=""
+        fill
+        className="object-cover object-center"
+        sizes="64px"
+        title={title}
+      />
+    </span>
+  );
+}
+
+function CollectionReferenceItemLabel({ item }: { item: CmsCollectionItem }) {
+  const previewImage = findCollectionItemPreviewImage(item.payload ?? {});
+
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <CollectionReferenceImagePreview
+        previewImage={previewImage}
+        title={item.title}
+      />
+      <span className="min-w-0">
+        <span className="block truncate">{item.title}</span>
+        {previewImage ? (
+          <span className="block truncate text-[11px] text-muted-foreground">
+            Image: {previewImage.fieldPath}
+          </span>
+        ) : null}
+      </span>
+    </span>
   );
 }
 
@@ -413,26 +592,30 @@ function ObjectFieldEditor({
   expandAllSignal: number;
   collapseAllSignal: number;
 }) {
-  const fields = def.fields ?? [];
-  const fieldsSig = fields.map((f) => f.key).join("\0");
-  const [isObjectExpanded, setIsObjectExpanded] = useState(true);
-  const [fieldOrder, setFieldOrder] = useState<number[]>(() =>
-    fields.map((_, i) => i),
+  const fields = useMemo(() => def.fields ?? [], [def.fields]);
+  const fieldsSig = useMemo(() => fields.map((f) => f.key).join("\0"), [fields]);
+  const [isObjectExpanded, setIsObjectExpanded] = useExpansionSignals(
+    true,
+    expandAllSignal,
+    collapseAllSignal,
   );
+  const [fieldOrderState, setFieldOrderState] = useState(() => ({
+    fieldsSig,
+    order: fields.map((_, i) => i),
+  }));
 
-  useEffect(() => {
-    setFieldOrder(fields.map((_, i) => i));
-  }, [fieldsSig]);
+  let fieldOrder = fieldOrderState.order;
+  if (fieldOrderState.fieldsSig !== fieldsSig) {
+    fieldOrder = fields.map((_, i) => i);
+    setFieldOrderState({ fieldsSig, order: fieldOrder });
+  }
 
-  useEffect(() => {
-    if (expandAllSignal <= 0) return;
-    setIsObjectExpanded(true);
-  }, [expandAllSignal]);
-
-  useEffect(() => {
-    if (collapseAllSignal <= 0) return;
-    setIsObjectExpanded(false);
-  }, [collapseAllSignal]);
+  const setFieldOrder: Dispatch<SetStateAction<number[]>> = (next) => {
+    setFieldOrderState((prev) => ({
+      ...prev,
+      order: resolveStateAction(next, prev.order),
+    }));
+  };
 
   const inner = (value[def.key] as Record<string, unknown> | undefined) ?? {};
 
@@ -568,22 +751,12 @@ function ArrayFieldEditor({
   const raw = value[def.key];
   const items = Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
   const [rowIds, setRowIds] = useRowIdsSyncedToLength(items.length);
-
-  const [isArrayExpanded, setIsArrayExpanded] = useState(true);
-  const [collapsedArrayItems, setCollapsedArrayItems] = useState<
-    Record<number, boolean>
-  >({});
-
-  useEffect(() => {
-    if (expandAllSignal <= 0) return;
-    setIsArrayExpanded(true);
-    setCollapsedArrayItems({});
-  }, [expandAllSignal]);
-
-  useEffect(() => {
-    if (collapseAllSignal <= 0) return;
-    setIsArrayExpanded(false);
-  }, [collapseAllSignal]);
+  const {
+    isArrayExpanded,
+    setIsArrayExpanded,
+    collapsedArrayItems,
+    setCollapsedArrayItems,
+  } = useArrayExpansionSignals(expandAllSignal, collapseAllSignal);
 
   function setItems(nextItems: Record<string, unknown>[]) {
     onChange({ ...value, [def.key]: nextItems });
@@ -740,6 +913,17 @@ function FieldRow({
 }) {
   const baseId = useId();
   const fid = `${baseId}-${def.key}`;
+  const collectionKey = (def.collectionKey ?? "").trim();
+  const collectionQuery = useCmsCollectionItems(
+    collectionKey,
+    {
+      includeInactive: false,
+      includeDraft: false,
+      limit: 200,
+      sort: "displayOrderAsc",
+      enabled: def.type === "collection_ref" && !!collectionKey,
+    }
+  );
 
   if (def.type === "object") {
     return (
@@ -954,6 +1138,81 @@ function FieldRow({
           />
         </div>
       );
+    case "collection_ref": {
+      const items = collectionQuery.data?.items ?? [];
+      const multiple = def.multiple !== false;
+      const raw = v;
+      const selectedMany = Array.isArray(raw)
+        ? raw.filter((id): id is string => typeof id === "string")
+        : [];
+      const selectedSingle = typeof raw === "string" ? raw : "";
+      return (
+        <div className="min-w-0 space-y-2">
+          <FieldLabelLine htmlFor={fid} def={def} />
+          <p className="text-xs text-muted-foreground">
+            Source:{" "}
+            <span className="font-mono">
+              {collectionKey || "No collection selected"}
+            </span>
+          </p>
+          {!collectionKey ? (
+            <p className="text-xs text-muted-foreground">
+              Choose a collection in Tool Builder for this field.
+            </p>
+          ) : null}
+          {collectionQuery.isLoading ? (
+            <p className="text-xs text-muted-foreground">Loading collection items…</p>
+          ) : items.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No items found in this collection. Add items in CMS Collections first.
+            </p>
+          ) : multiple ? (
+            <div className="space-y-2 rounded-md border p-3">
+              {items.map((item) => {
+                const checked = selectedMany.includes(item.id);
+                return (
+                  <div key={item.id} className="flex items-start gap-3">
+                    <Checkbox
+                      id={`${fid}-${item.id}`}
+                      className="mt-3"
+                      checked={checked}
+                      onCheckedChange={(next) => {
+                        const set = new Set(selectedMany);
+                        if (next === true) set.add(item.id);
+                        else set.delete(item.id);
+                        setLeaf(Array.from(set));
+                      }}
+                    />
+                    <Label
+                      htmlFor={`${fid}-${item.id}`}
+                      className="min-w-0 flex-1 cursor-pointer text-sm font-normal"
+                    >
+                      <CollectionReferenceItemLabel item={item} />
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Select
+              value={selectedSingle}
+              onValueChange={(next) => setLeaf(next)}
+            >
+              <SelectTrigger id={fid} className="w-full min-w-0">
+                <SelectValue placeholder="Choose item" />
+              </SelectTrigger>
+              <SelectContent>
+                {items.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    <CollectionReferenceItemLabel item={item} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      );
+    }
     case "title":
     case "url":
     case "date":
@@ -991,8 +1250,6 @@ export function LayoutConfigForm({
   onChange,
   showRootKeyHint = true,
 }: LayoutConfigFormProps) {
-  const [expandAllSignal, setExpandAllSignal] = useState(0);
-  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   const inner = (value[rootKey] as Record<string, unknown> | undefined) ?? {};
 
   if (defs.length === 0) {
@@ -1016,8 +1273,6 @@ export function LayoutConfigForm({
         defs={defs}
         value={inner}
         onChange={(nextInner) => onChange({ ...value, [rootKey]: nextInner })}
-        expandAllSignal={expandAllSignal}
-        collapseAllSignal={collapseAllSignal}
       />
     </div>
   );

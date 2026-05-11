@@ -9,6 +9,7 @@ import {
   Trash2,
   Menu,
   PanelBottom,
+  Database,
   Megaphone,
   Images,
   Hammer,
@@ -73,6 +74,11 @@ const cmsNav: NavItem[] = [
     href: "/dashboard/cms/tools",
     label: "Tools",
     icon: Hammer,
+  },
+  {
+    href: "/dashboard/cms/collections",
+    label: "Collections",
+    icon: Database,
   },
   {
     href: "/dashboard/cms/navigation",

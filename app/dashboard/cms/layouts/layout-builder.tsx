@@ -63,6 +63,8 @@ import {
   siblingKeysFrom,
   updateBlockDefault,
   updateBlockDefaultLink,
+  updateBlockCollectionKey,
+  updateBlockCollectionMultiple,
   updateBlockKey,
   updateBlockRequired,
   type LayoutBuilderProps,
@@ -240,6 +242,20 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
   const setBlockRequired = useCallback((id: string, required: boolean) => {
     setBlocks((prev) => updateBlockRequired(prev, id, required));
   }, []);
+
+  const setBlockCollectionKey = useCallback(
+    (id: string, key: string) => {
+      setBlocks((prev) => updateBlockCollectionKey(prev, id, key));
+    },
+    [],
+  );
+
+  const setBlockCollectionMultiple = useCallback(
+    (id: string, multiple: boolean) => {
+      setBlocks((prev) => updateBlockCollectionMultiple(prev, id, multiple));
+    },
+    [],
+  );
 
   const moveBlock = useCallback((id: string, direction: "up" | "down") => {
     setBlocks((prev) => moveBlockSibling(prev, id, direction));
@@ -671,6 +687,8 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
                           onDefaultChange={setBlockDefault}
                           onDefaultLinkChange={setBlockDefaultLink}
                           onRequiredChange={setBlockRequired}
+                          onCollectionKeyChange={setBlockCollectionKey}
+                          onCollectionMultipleChange={setBlockCollectionMultiple}
                           onMoveBlock={moveBlock}
                           customTools={Object.values(
                             customToolsQuery.data?.tools ?? {},

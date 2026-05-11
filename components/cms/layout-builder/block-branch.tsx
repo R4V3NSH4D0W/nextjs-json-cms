@@ -13,8 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { CmsCustomTool } from "@/lib/cms/api";
 import { cn } from "@/lib/shared/utils";
+import { useCmsCollections } from "@/hooks/use-cms";
 import {
   TYPE_LABEL,
   duplicateKeysAmong,
@@ -42,6 +50,8 @@ function LayoutBuilderBlockRow({
   onDefaultChange,
   onDefaultLinkChange,
   onRequiredChange,
+  onCollectionKeyChange,
+  onCollectionMultipleChange,
   childrenBelow,
 }: {
   block: SectionBlock;
@@ -60,6 +70,8 @@ function LayoutBuilderBlockRow({
     next: { value: string; href: string; target: string },
   ) => void;
   onRequiredChange: (id: string, required: boolean) => void;
+  onCollectionKeyChange: (id: string, key: string) => void;
+  onCollectionMultipleChange: (id: string, multiple: boolean) => void;
   childrenBelow?: ReactNode;
 }) {
   const isLeaf = !isContainer(block.type);
@@ -80,6 +92,8 @@ function LayoutBuilderBlockRow({
   const canMoveUp = siblingIndex > 0;
   const canMoveDown = siblingIndex < siblingCount - 1;
   const isRoot = depth === 0;
+  const { data: collectionsRes } = useCmsCollections();
+  const collectionKeys = (collectionsRes?.collections ?? []).map((c) => c.key);
 
   return (
     <li
@@ -185,6 +199,43 @@ function LayoutBuilderBlockRow({
                 Required
               </Label>
             </div>
+            {block.type === "collection_ref" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Source</span>
+                <Select
+                  value={block.collectionKey?.trim() || "testimonials"}
+                  onValueChange={(next) => onCollectionKeyChange(block.id, next)}
+                >
+                  <SelectTrigger className="h-8 w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(collectionKeys.length > 0 ? collectionKeys : ["testimonials"]).map(
+                      (key) => (
+                        <SelectItem key={key} value={key}>
+                          {key}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`cms-layout-ref-multi-${block.id}`}
+                    checked={block.multiple !== false}
+                    onCheckedChange={(c) =>
+                      onCollectionMultipleChange(block.id, c === true)
+                    }
+                  />
+                  <Label
+                    htmlFor={`cms-layout-ref-multi-${block.id}`}
+                    className="cursor-pointer text-xs font-normal text-muted-foreground"
+                  >
+                    Allow multiple
+                  </Label>
+                </div>
+              </div>
+            ) : null}
             {isLeaf ? (
               <div className="max-w-full border-t border-dashed border-muted-foreground/20 pt-2">
                 <LayoutBuilderLeafDefaultField
@@ -227,6 +278,8 @@ export function LayoutBuilderBlockBranch({
   onDefaultChange,
   onDefaultLinkChange,
   onRequiredChange,
+  onCollectionKeyChange,
+  onCollectionMultipleChange,
   onMoveBlock,
   customTools,
 }: {
@@ -255,6 +308,8 @@ export function LayoutBuilderBlockBranch({
     next: { value: string; href: string; target: string },
   ) => void;
   onRequiredChange: (id: string, required: boolean) => void;
+  onCollectionKeyChange: (id: string, key: string) => void;
+  onCollectionMultipleChange: (id: string, multiple: boolean) => void;
   onMoveBlock: (id: string, direction: "up" | "down") => void;
   customTools?: CmsCustomTool[];
 }) {
@@ -309,6 +364,8 @@ export function LayoutBuilderBlockBranch({
                 onDefaultChange={onDefaultChange}
                 onDefaultLinkChange={onDefaultLinkChange}
                 onRequiredChange={onRequiredChange}
+                onCollectionKeyChange={onCollectionKeyChange}
+                onCollectionMultipleChange={onCollectionMultipleChange}
                 onMoveBlock={onMoveBlock}
                 customTools={customTools}
               />
@@ -345,6 +402,8 @@ export function LayoutBuilderBlockBranch({
       onDefaultChange={onDefaultChange}
       onDefaultLinkChange={onDefaultLinkChange}
       onRequiredChange={onRequiredChange}
+      onCollectionKeyChange={onCollectionKeyChange}
+      onCollectionMultipleChange={onCollectionMultipleChange}
       childrenBelow={nestedSection}
     />
   );

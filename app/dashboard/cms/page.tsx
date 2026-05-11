@@ -5,6 +5,7 @@ import {
   Images,
   LayoutTemplate,
   Hammer,
+  Database,
   Megaphone,
   Menu,
   PanelBottom,
@@ -30,6 +31,12 @@ const items = [
     description: "Reusable layout field snippets",
     href: "/dashboard/cms/tools",
     icon: Hammer,
+  },
+  {
+    title: "Collections",
+    description: "Reusable content records (testimonials)",
+    href: "/dashboard/cms/collections",
+    icon: Database,
   },
   {
     title: "Navigation",

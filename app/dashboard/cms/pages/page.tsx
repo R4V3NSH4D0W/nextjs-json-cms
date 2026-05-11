@@ -44,7 +44,7 @@ function Page() {
   const { data, isLoading, isError, error, refetch } = useCmsPages();
   const deletePage = useDeleteCmsPage();
 
-  const pages = data?.pages ?? [];
+  const pages = useMemo(() => data?.pages ?? [], [data?.pages]);
   const counts = useMemo(() => {
     const active = pages.filter((p) => p.isActive).length;
     const archived = pages.filter((p) => !p.isActive).length;
@@ -52,7 +52,6 @@ function Page() {
   }, [pages]);
 
   const rows = useMemo(() => {
-    const pages = data?.pages ?? [];
     const byStatus =
       statusFilter === "all"
         ? pages
@@ -65,7 +64,7 @@ function Page() {
       (p) =>
         p.title.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
     );
-  }, [data?.pages, search, statusFilter]);
+  }, [pages, search, statusFilter]);
 
   const selectedIds = useMemo(
     () => new Set(Object.keys(rowSelection).filter((id) => rowSelection[id])),
@@ -105,8 +104,10 @@ function Page() {
         title={
           deleteTarget ? `Delete page “${deleteTarget.title}”?` : "Delete page?"
         }
-        description="This cannot be undone."
+        description="This archives the page and removes it from active CMS listings until restored."
         confirmLabel="Delete page"
+        confirmationText={deleteTarget?.slug}
+        confirmationLabel="Type the page slug to confirm."
         destructive
         onConfirm={() => {
           if (!deleteTarget) return;

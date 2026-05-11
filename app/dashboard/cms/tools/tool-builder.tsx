@@ -41,6 +41,8 @@ import {
   siblingKeysFrom,
   updateBlockDefault,
   updateBlockDefaultLink,
+  updateBlockCollectionKey,
+  updateBlockCollectionMultiple,
   updateBlockKey,
   updateBlockRequired,
   type SectionBlock,
@@ -66,6 +68,16 @@ function blockToDefinition(
       type: block.type,
       key: block.key,
       fields: block.children.map((child) => blockToDefinition(child)),
+      ...(block.required ? { required: true } : {}),
+    };
+  }
+  if (block.type === "collection_ref") {
+    return {
+      type: "collection_ref",
+      key: block.key,
+      collectionKey: block.collectionKey?.trim() || "testimonials",
+      multiple: block.multiple !== false,
+      ...(block.defaultStr !== undefined ? { defaultStr: block.defaultStr } : {}),
       ...(block.required ? { required: true } : {}),
     };
   }
@@ -247,6 +259,20 @@ function CmsToolBuilderForm({
     setBlocks((prev) => updateBlockRequired(prev, id, required));
   }, []);
 
+  const setBlockCollectionKey = useCallback(
+    (id: string, key: string) => {
+      setBlocks((prev) => updateBlockCollectionKey(prev, id, key));
+    },
+    [],
+  );
+
+  const setBlockCollectionMultiple = useCallback(
+    (id: string, multiple: boolean) => {
+      setBlocks((prev) => updateBlockCollectionMultiple(prev, id, multiple));
+    },
+    [],
+  );
+
   const moveBlock = useCallback((id: string, direction: "up" | "down") => {
     setBlocks((prev) => moveBlockSibling(prev, id, direction));
   }, []);
@@ -416,6 +442,8 @@ function CmsToolBuilderForm({
                         onDefaultChange={setBlockDefault}
                         onDefaultLinkChange={setBlockDefaultLink}
                         onRequiredChange={setBlockRequired}
+                        onCollectionKeyChange={setBlockCollectionKey}
+                        onCollectionMultipleChange={setBlockCollectionMultiple}
                         onMoveBlock={moveBlock}
                         customTools={sortedTools}
                       />

@@ -73,6 +73,8 @@ function LayoutsPageContent() {
         }
         description="Pages using it will have the layout unset."
         confirmLabel="Delete layout"
+        confirmationText={deleteTarget?.rootKey}
+        confirmationLabel="Type the layout root key to confirm."
         destructive
         onConfirm={() => {
           if (!deleteTarget) return;

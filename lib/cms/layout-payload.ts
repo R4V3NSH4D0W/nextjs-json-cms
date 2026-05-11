@@ -9,6 +9,8 @@ export type LayoutFieldDef = {
   type: string;
   key: string;
   fields?: LayoutFieldDef[];
+  collectionKey?: string;
+  multiple?: boolean;
   /** Optional default from layout schema (leaf fields). */
   default?: unknown;
   /** When true, page editors must fill this field before save (see `validateRequiredLayoutValues`). */
@@ -38,6 +40,8 @@ function emptyLeafValue(type: string): unknown {
       return 0;
     case "link":
       return { value: "", href: "", target: "_self" };
+    case "collection_ref":
+      return "";
     case "title":
     case "description":
     case "textarea":
@@ -56,6 +60,9 @@ function leafValueFromDef(def: LayoutFieldDef): unknown {
   if (def.default !== undefined) {
     return normalizeLeafDefault(def.type, def.default);
   }
+  if (def.type === "collection_ref") {
+    return def.multiple === false ? "" : [];
+  }
   return emptyLeafValue(def.type);
 }
 
@@ -72,6 +79,14 @@ function normalizeLeafDefault(type: string, raw: unknown): unknown {
     }
     case "link":
       return normalizeLinkLeafDefault(raw);
+    case "collection_ref":
+      if (Array.isArray(raw)) {
+        return raw
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }
+      return raw == null ? "" : String(raw);
     case "title":
     case "description":
     case "textarea":
@@ -153,6 +168,12 @@ export function parseFieldDefs(raw: unknown): LayoutFieldDef[] {
       ? parseFieldDefs(fieldsRaw)
       : undefined;
     const def: LayoutFieldDef = { type, key, fields };
+    if (typeof o.collectionKey === "string" && o.collectionKey.trim()) {
+      def.collectionKey = o.collectionKey.trim();
+    }
+    if (typeof o.multiple === "boolean") {
+      def.multiple = o.multiple;
+    }
     if (Object.prototype.hasOwnProperty.call(o, "default")) {
       def.default = o.default;
     }
@@ -209,6 +230,7 @@ const VALID_SECTION_BLOCK_TYPES = new Set<string>([
   "url",
   "date",
   "link",
+  "collection_ref",
   "array",
   "object",
 ]);
@@ -310,6 +332,8 @@ export interface HydratedLayoutBuilderBlock {
   defaultStr?: string;
   /** Present when `type` is `link` (composite default in schema JSON). */
   defaultLink?: { value: string; href: string; target: string };
+  collectionKey?: string;
+  multiple?: boolean;
   required?: boolean;
 }
 
@@ -358,6 +382,18 @@ export function layoutFieldDefsToHydratedBlocks(
         required,
       };
     }
+    if (def.type === "collection_ref") {
+      return {
+        id,
+        type: def.type,
+        key: def.key,
+        children: [],
+        defaultStr: leafDefaultToBuilderString(def.type, def.default),
+        collectionKey: def.collectionKey?.trim() || "testimonials",
+        multiple: def.multiple !== false,
+        required,
+      };
+    }
     return {
       id,
       type: def.type,
@@ -385,6 +421,16 @@ function isLeafValueEmpty(type: string, value: unknown): boolean {
     case "link": {
       const o = normalizeLinkLeafDefault(value);
       return o.value.trim() === "" && o.href.trim() === "";
+    }
+    case "collection_ref": {
+      if (Array.isArray(value)) {
+        const validIds = value.filter(
+          (v): v is string => typeof v === "string" && v.trim() !== ""
+        );
+        return validIds.length === 0;
+      }
+      if (value === undefined || value === null) return true;
+      return String(value).trim() === "";
     }
     case "description":
       if (value === undefined || value === null) return true;

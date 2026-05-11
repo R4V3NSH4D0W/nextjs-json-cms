@@ -3,6 +3,7 @@ import { useCurrentProject } from "@/components/providers/current-project-provid
 import {
   cmsApi,
   type CmsBlockType,
+  type CmsCollectionKey,
   type CmsCustomToolDefinition,
   type CmsCustomToolsExportPayload,
   type CmsPageCreateBody,
@@ -383,6 +384,147 @@ export const useImportCmsCustomTools = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to import tools");
+    },
+  });
+};
+
+export const useCmsCollectionItems = (
+  key: CmsCollectionKey,
+  options?: {
+    includeInactive?: boolean;
+    includeDraft?: boolean;
+    limit?: number;
+    offset?: number;
+    sort?: "displayOrderAsc" | "updatedAtDesc" | "createdAtDesc";
+    enabled?: boolean;
+  },
+) => {
+  const { currentProject } = useCurrentProject();
+  const enabled = options?.enabled ?? true;
+  const queryOptions = options
+    ? {
+        includeInactive: options.includeInactive,
+        includeDraft: options.includeDraft,
+        limit: options.limit,
+        offset: options.offset,
+        sort: options.sort,
+      }
+    : undefined;
+  return useQuery({
+    queryKey: ["cms-collections", currentProject?.slug, key, queryOptions],
+    queryFn: () => cmsApi.listCollectionItems(currentProject!.slug, key, queryOptions),
+    enabled: !!currentProject && !!key && enabled,
+  });
+};
+
+export const useCmsCollections = () => {
+  const { currentProject } = useCurrentProject();
+  return useQuery({
+    queryKey: ["cms-collection-defs", currentProject?.slug],
+    queryFn: () => cmsApi.listCollections(currentProject!.slug),
+    enabled: !!currentProject,
+  });
+};
+
+export const useUpsertCmsCollection = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      key,
+      data,
+    }: {
+      key: string;
+      data: { name: string; schema?: Record<string, unknown> };
+    }) => cmsApi.upsertCollection(currentProject!.slug, key, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-collection-defs"] });
+      toast.success("Collection saved");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to save collection");
+    },
+  });
+};
+
+export const useDeleteCmsCollection = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => cmsApi.deleteCollection(currentProject!.slug, key),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-collection-defs"] });
+      queryClient.invalidateQueries({ queryKey: ["cms-collections"] });
+      toast.success("Collection deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete collection");
+    },
+  });
+};
+
+export const useCreateCmsCollectionItem = (key: CmsCollectionKey) => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string;
+      slug?: string | null;
+      payload?: Record<string, unknown>;
+      isActive?: boolean;
+      published?: boolean;
+      displayOrder?: number;
+    }) => cmsApi.createCollectionItem(currentProject!.slug, key, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-collections"] });
+      toast.success("Collection item created");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create collection item");
+    },
+  });
+};
+
+export const useUpdateCmsCollectionItem = (key: CmsCollectionKey) => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<{
+        title: string;
+        slug: string | null;
+        payload: Record<string, unknown>;
+        isActive: boolean;
+        published: boolean;
+        displayOrder: number;
+      }>;
+    }) => cmsApi.updateCollectionItem(currentProject!.slug, key, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-collections"] });
+      toast.success("Collection item updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update collection item");
+    },
+  });
+};
+
+export const useDeleteCmsCollectionItem = (key: CmsCollectionKey) => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      cmsApi.deleteCollectionItem(currentProject!.slug, key, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cms-collections"] });
+      toast.success("Collection item deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete collection item");
     },
   });
 };

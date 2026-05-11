@@ -136,8 +136,60 @@ export type CmsCustomToolDefinition = {
   children?: CmsCustomToolDefinition[];
   defaultStr?: string;
   defaultLink?: { value?: string; href?: string; target?: string };
+  collectionKey?: string;
+  multiple?: boolean;
   required?: boolean;
 };
+
+export type CmsCollectionKey = string;
+
+export interface CmsCollectionDefinition {
+  id: string;
+  key: string;
+  name: string;
+  schema: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsCollectionsResponse {
+  success: boolean;
+  collections: CmsCollectionDefinition[];
+}
+
+export interface CmsCollectionDefinitionResponse {
+  success: boolean;
+  collection: CmsCollectionDefinition;
+}
+
+export interface CmsCollectionItem {
+  id: string;
+  key: CmsCollectionKey;
+  title: string;
+  slug: string | null;
+  payload: Record<string, unknown>;
+  isActive: boolean;
+  published: boolean;
+  displayOrder: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CmsCollectionItemsResponse {
+  success: boolean;
+  items: CmsCollectionItem[];
+  pagination?: {
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+export interface CmsCollectionItemResponse {
+  success: boolean;
+  item: CmsCollectionItem;
+}
 
 export interface CmsCustomTool {
   id: string;
@@ -411,6 +463,87 @@ export const cmsApi = {
       data
     ),
 
+  listCollections: (projectSlug: string) =>
+    api.get<CmsCollectionsResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections`
+    ),
+
+  upsertCollection: (
+    projectSlug: string,
+    key: string,
+    data: { name: string; schema?: Record<string, unknown> }
+  ) =>
+    api.put<CmsCollectionDefinitionResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${encodeURIComponent(key)}`,
+      data
+    ),
+
+  deleteCollection: (projectSlug: string, key: string) =>
+    api.delete<{ success: boolean; message?: string }>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${encodeURIComponent(key)}`
+    ),
+
+  listCollectionItems: (
+    projectSlug: string,
+    key: CmsCollectionKey,
+    params?: {
+      includeInactive?: boolean;
+      includeDraft?: boolean;
+      limit?: number;
+      offset?: number;
+      sort?: "displayOrderAsc" | "updatedAtDesc" | "createdAtDesc";
+    }
+  ) =>
+    api.get<CmsCollectionItemsResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${key}`,
+      { params }
+    ),
+
+  getCollectionItem: (projectSlug: string, key: CmsCollectionKey, id: string) =>
+    api.get<CmsCollectionItemResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${key}/${id}`
+    ),
+
+  createCollectionItem: (
+    projectSlug: string,
+    key: CmsCollectionKey,
+    data: {
+      title: string;
+      slug?: string | null;
+      payload?: Record<string, unknown>;
+      isActive?: boolean;
+      published?: boolean;
+      displayOrder?: number;
+    }
+  ) =>
+    api.post<CmsCollectionItemResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${key}`,
+      data
+    ),
+
+  updateCollectionItem: (
+    projectSlug: string,
+    key: CmsCollectionKey,
+    id: string,
+    data: Partial<{
+      title: string;
+      slug: string | null;
+      payload: Record<string, unknown>;
+      isActive: boolean;
+      published: boolean;
+      displayOrder: number;
+    }>
+  ) =>
+    api.patch<CmsCollectionItemResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${key}/${id}`,
+      data
+    ),
+
+  deleteCollectionItem: (projectSlug: string, key: CmsCollectionKey, id: string) =>
+    api.delete<{ success: boolean; message?: string }>(
+      `/api/v1/admin/projects/${projectSlug}/cms/collections/${key}/${id}`
+    ),
+
   /** Site chrome — nested trees (backend may 404 until implemented; dashboard uses session fallback). */
   getNavigationConfig: (projectSlug: string) =>
     api.get<{ success: boolean; navigation: CmsNavigationConfig }>(
@@ -465,5 +598,29 @@ export const cmsApi = {
     api.get<{ success: boolean } & Record<string, unknown>>(
       publicCmsAnnouncementsApiPath(),
       { headers: { "x-tenant-slug": projectSlug } }
+    ),
+
+  getPublicCollectionItems: (
+    projectSlug: string,
+    key: CmsCollectionKey,
+    params?: {
+      limit?: number;
+      offset?: number;
+      sort?: "displayOrderAsc" | "updatedAtDesc" | "createdAtDesc";
+      tag?: string;
+      locale?: string;
+    }
+  ) =>
+    api.get<{
+      success: boolean;
+      key: string;
+      items: CmsCollectionItem[];
+      pagination?: { limit: number; offset: number; hasMore: boolean };
+    }>(
+      `/api/v1/collections/${key}`,
+      {
+        headers: { "x-tenant-slug": projectSlug },
+        params,
+      }
     ),
 };
