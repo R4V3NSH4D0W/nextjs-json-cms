@@ -317,13 +317,24 @@ function SortableLayoutSlotCard({
           "border-muted-foreground/35 bg-muted/25 opacity-95"
       )}
     >
-      <div className="flex flex-wrap items-start gap-3">
+      <div
+        className={cn(
+          "flex flex-wrap gap-3",
+          expanded ? "items-start" : "items-center"
+        )}
+      >
         {hideReorder ? (
-          <div className="mt-0.5 w-6 shrink-0" aria-hidden />
+          <div
+            className={cn("w-6 shrink-0", expanded ? "mt-0.5" : "mt-0 self-center")}
+            aria-hidden
+          />
         ) : (
           <button
             type="button"
-            className="mt-0.5 shrink-0 cursor-grab touch-none rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+            className={cn(
+              "shrink-0 cursor-grab touch-none rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing",
+              expanded ? "mt-0.5" : "mt-0 self-center"
+            )}
             aria-label="Drag to reorder"
             disabled={disabled}
             {...attributes}
@@ -332,9 +343,24 @@ function SortableLayoutSlotCard({
             <GripVertical className="h-5 w-5" />
           </button>
         )}
-        <div className="min-w-0 flex-1 space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-start gap-1.5 sm:gap-2">
+        <div
+          className={cn(
+            "min-w-0 flex-1",
+            expanded ? "space-y-4" : "flex items-center"
+          )}
+        >
+          <div
+            className={cn(
+              "flex min-h-8 w-full flex-wrap justify-between gap-3",
+              expanded ? "items-start" : "items-center"
+            )}
+          >
+            <div
+              className={cn(
+                "flex min-w-0 flex-1 gap-1.5 sm:gap-2",
+                expanded ? "items-start" : "items-center"
+              )}
+            >
               <Button
                 type="button"
                 variant="ghost"
@@ -356,10 +382,20 @@ function SortableLayoutSlotCard({
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 )}
               </Button>
-              <div className="min-w-0 flex-1 space-y-1">
+              <div
+                className={cn(
+                  "min-w-0 flex-1",
+                  hideLayoutSelect ? (expanded ? "space-y-1" : "") : "space-y-2"
+                )}
+              >
                 {hideLayoutSelect ? (
                   <p
-                    className="text-base font-semibold leading-snug break-words"
+                    className={cn(
+                      "text-base font-semibold break-words",
+                      expanded
+                        ? "leading-snug"
+                        : "flex h-8 items-center leading-none"
+                    )}
                     title={slot.layoutId ? (resolvedLayoutName ?? undefined) : undefined}
                   >
                     {sectionHeaderLabel}
