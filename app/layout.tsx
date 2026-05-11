@@ -24,8 +24,11 @@ export default function RootLayout({
       lang="en"
       className={`h-full antialiased ${sans.variable}`}
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body suppressHydrationWarning className="min-h-full flex flex-col font-sans">
+        {children}
+      </body>
     </html>
   );
 }

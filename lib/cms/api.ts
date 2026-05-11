@@ -160,6 +160,26 @@ export interface CmsCustomToolResponse {
   tool: CmsCustomTool;
 }
 
+export interface CmsCustomToolsExportPayload {
+  kind: "cms-custom-tools";
+  version: 1;
+  tools: Array<{
+    name: string;
+    description: string | null;
+    definition: CmsCustomToolDefinition;
+  }>;
+}
+
+export interface CmsCustomToolsImportResponse {
+  success: boolean;
+  created: CmsCustomTool[];
+  rejected: Array<{
+    index: number;
+    name: string | null;
+    reason: string;
+  }>;
+}
+
 type CmsPageSeoCreatePatch = Partial<
   Pick<
     CmsPageSeoFields,
@@ -358,6 +378,37 @@ export const cmsApi = {
   deleteCustomTool: (projectSlug: string, id: string) =>
     api.delete<{ success: boolean; message?: string }>(
       `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}`
+    ),
+
+  exportCustomTools: (projectSlug: string, ids?: string[]) => {
+    const search =
+      ids && ids.length > 0
+        ? `?${new URLSearchParams({ ids: ids.join(",") }).toString()}`
+        : "";
+    return api.get<CmsCustomToolsExportPayload>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/export${search}`
+    );
+  },
+
+  exportCustomTool: (projectSlug: string, id: string) =>
+    api.get<CmsCustomToolsExportPayload>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/${id}/export`
+    ),
+
+  importCustomTools: (
+    projectSlug: string,
+    data:
+      | CmsCustomToolsExportPayload
+      | Array<{
+          name: string;
+          description?: string | null;
+          definition: CmsCustomToolDefinition;
+        }>
+      | Record<string, unknown>
+  ) =>
+    api.post<CmsCustomToolsImportResponse>(
+      `/api/v1/admin/projects/${projectSlug}/cms/tools/import`,
+      data
     ),
 
   /** Site chrome — nested trees (backend may 404 until implemented; dashboard uses session fallback). */

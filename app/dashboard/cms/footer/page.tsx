@@ -25,6 +25,7 @@ import {
   useCmsFooterConfig,
   useUpdateCmsFooterConfig,
 } from "@/hooks/use-cms-site-content";
+import { useSaveShortcut } from "@/hooks/use-save-shortcut";
 import { cmsApi, type CmsLayoutResponse } from "@/lib/cms/api";
 import { validateSiteLayoutSectionsOptional } from "@/lib/cms/page-slots";
 import type { CmsFooterConfig } from "@/lib/cms/site-content-types";
@@ -115,6 +116,14 @@ export default function CmsFooterPage() {
     update.mutate(draft);
   }
 
+  useSaveShortcut(
+    () => {
+      if (update.isPending || !draft) return;
+      void handleSave();
+    },
+    { enabled: true },
+  );
+
   if (isLoading || !draft) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
@@ -127,7 +136,7 @@ export default function CmsFooterPage() {
   const refUrl = draft.referenceImageUrl?.trim() ?? "";
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-10">
+    <div className="flex w-full max-w-none flex-col gap-6 px-4 pb-10 sm:px-6 lg:px-8">
       <Button variant="ghost" size="sm" className="w-fit" asChild>
         <Link href="/dashboard/cms">← CMS home</Link>
       </Button>

@@ -35,14 +35,14 @@ export function AdminDashboardShell({
           currentProject={currentProject}
           currentAccess={currentAccess}
         >
-          <SidebarProvider defaultOpen>
+          <SidebarProvider defaultOpen className="h-screen overflow-hidden">
             <Toaster />
-            <div className="flex min-h-screen w-full bg-background">
+            <div className="flex h-full w-full overflow-x-hidden overflow-y-hidden bg-background">
               <AdminSidebar mode={mode} />
-              <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-hidden">
                 <AdminHeader userEmail={userEmail} mode={mode} />
-                <main className="flex-1 overflow-auto bg-background/80 px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8">
-                  <div className="mx-auto w-full max-w-7xl">{children}</div>
+                <main className="flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background/80 px-3 py-4 md:px-4 md:py-5 lg:px-5 lg:py-6">
+                  <div className="mx-auto w-full min-w-0 max-w-none">{children}</div>
                 </main>
               </div>
             </div>

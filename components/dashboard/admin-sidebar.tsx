@@ -120,16 +120,17 @@ export function AdminSidebar({
 
   const visibleProjectMainNav = projectMainNav;
   const visibleCmsNav = cmsNav;
+  const collapsedIconButtonClass = "group-data-[collapsible=icon]:mx-auto";
 
   return (
     <Sidebar
       className="border-r border-sidebar-border bg-sidebar"
       collapsible="icon"
     >
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3.5">
-        <div className="flex items-center gap-2">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-3.5 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
+        <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-primary/95 text-sm font-semibold text-primary-foreground"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-primary/95 text-sm font-semibold text-primary-foreground"
             aria-hidden
           >
             {mode === "admin" ? "A" : "D"}
@@ -144,9 +145,9 @@ export function AdminSidebar({
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="scrollbar-hide gap-0 p-2">
+      <SidebarContent className="scrollbar-hide gap-0 p-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2">
         {mode === "admin" ? (
-          <SidebarGroup>
+          <SidebarGroup className="group-data-[collapsible=icon]:p-1">
             <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
               Admin
             </SidebarGroupLabel>
@@ -161,6 +162,7 @@ export function AdminSidebar({
                         asChild
                         isActive={active}
                         className={cn(
+                          collapsedIconButtonClass,
                           active &&
                             "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
                         )}
@@ -178,7 +180,7 @@ export function AdminSidebar({
           </SidebarGroup>
         ) : (
           <>
-            <SidebarGroup>
+            <SidebarGroup className="group-data-[collapsible=icon]:p-1">
               <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
                 Main
               </SidebarGroupLabel>
@@ -193,6 +195,7 @@ export function AdminSidebar({
                           asChild
                           isActive={active}
                           className={cn(
+                            collapsedIconButtonClass,
                             active &&
                               "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
                           )}
@@ -209,7 +212,7 @@ export function AdminSidebar({
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <SidebarGroup className="mt-4">
+            <SidebarGroup className="mt-4 group-data-[collapsible=icon]:mt-2 group-data-[collapsible=icon]:p-1">
               <SidebarGroupLabel className="text-[0.68rem] tracking-wide text-muted-foreground/90">
                 Content
               </SidebarGroupLabel>
@@ -224,6 +227,7 @@ export function AdminSidebar({
                           asChild
                           isActive={active}
                           className={cn(
+                            collapsedIconButtonClass,
                             active &&
                               "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground",
                           )}

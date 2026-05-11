@@ -82,6 +82,10 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Allow Next/Image optimizer to fetch local backend media during development.
+    ...(process.env.NODE_ENV !== "production"
+      ? { dangerouslyAllowLocalIP: true }
+      : {}),
     remotePatterns: [
       {
         protocol: "https",

@@ -483,6 +483,11 @@ export interface CmsLayoutSlotsEditorProps {
    * Starts at 0; first effective increment is 1.
    */
   collapseAllSignal?: number;
+  /**
+   * Minimum number of sections that must remain. Defaults to 1 to preserve
+   * existing behavior in single-layout contexts.
+   */
+  minSlots?: number;
   disabled?: boolean;
 }
 
@@ -498,6 +503,7 @@ export function CmsLayoutSlotsEditor({
   defaultSectionExpanded = true,
   expandAllSignal = 0,
   collapseAllSignal = 0,
+  minSlots = 1,
   disabled = false,
 }: CmsLayoutSlotsEditorProps) {
   const sensors = useSensors(
@@ -533,7 +539,7 @@ export function CmsLayoutSlotsEditor({
               layouts={layouts}
               layoutsLoading={layoutsLoading}
               disabled={disabled}
-              canRemove={slots.length > 1}
+              canRemove={slots.length > Math.max(0, minSlots)}
               hideLayoutSelect={hideLayoutSelect}
               hideReorder={hideReorder}
               sectionIndex={index + 1}

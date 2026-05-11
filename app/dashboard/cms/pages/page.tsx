@@ -117,7 +117,7 @@ function Page() {
           if (!open) setDeleteTarget(null);
         }}
       />
-      <div className="flex w-full flex-col space-y-5">
+      <div className="flex w-full flex-col space-y-5 px-4 sm:px-6 lg:px-8">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
             <Button

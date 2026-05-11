@@ -31,7 +31,7 @@ function previewCaptionClasses(mode: "default" | "imageOnly"): {
 
 /** Sticky column width for new/edit CMS page preview (wider strip on large screens). */
 export const CMS_LAYOUT_PAGE_PREVIEW_ASIDE_CLASSNAME =
-  "w-full shrink-0 lg:sticky lg:top-4 lg:self-start lg:w-[min(100%,min(720px,52vw))] lg:max-w-[min(720px,55%)] lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
+  "w-full shrink-0 lg:sticky lg:top-4 lg:self-start lg:w-[min(100%,min(720px,52vw))] lg:max-w-[min(720px,55%)]";
 
 /** Reference URLs from site chrome (CMS navigation / footer / announcements). Shown above page sections in the preview strip. */
 export interface CmsSiteChromePreviewUrls {

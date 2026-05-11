@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
-import { Info, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
@@ -48,6 +48,10 @@ import {
   readSectionsExpandedPref,
   writeSectionsExpandedPref,
 } from "@/lib/cms/sections-expand-pref";
+import {
+  readPagePreviewVisiblePref,
+  writePagePreviewVisiblePref,
+} from "@/lib/cms/page-preview-pref";
 import { mergeLayoutMetaIntoConfig } from "@/lib/cms/block-meta";
 import { validateCmsSlotsLayoutFields } from "@/lib/cms/page-slots";
 import {
@@ -134,11 +138,13 @@ function NewPageContent() {
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   const [sectionsPrefLoaded, setSectionsPrefLoaded] = useState(false);
   const [defaultSectionExpanded, setDefaultSectionExpanded] = useState(true);
+  const [showPreview, setShowPreview] = useState(true);
 
   useEffect(() => {
     setDefaultSectionExpanded(
       readSectionsExpandedPref(CMS_SECTIONS_EXPAND_SCOPE_NEW)
     );
+    setShowPreview(readPagePreviewVisiblePref(CMS_SECTIONS_EXPAND_SCOPE_NEW));
     setSectionsPrefLoaded(true);
   }, []);
 
@@ -271,7 +277,7 @@ function NewPageContent() {
   const pending = createPage.isPending || savingBlocks;
 
   return (
-    <div className="flex flex-col space-y-5 pb-24">
+    <div className="flex flex-col space-y-5 px-4 pb-24 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -367,8 +373,9 @@ function NewPageContent() {
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                   <h2 className="text-lg font-semibold">Page content</h2>
-                  {slots.length > 0 ? (
-                    <div className="flex shrink-0 flex-wrap gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {slots.length > 0 ? (
+                      <>
                       <Button
                         type="button"
                         variant="outline"
@@ -399,8 +406,31 @@ function NewPageContent() {
                       >
                         Collapse
                       </Button>
-                    </div>
-                  ) : null}
+                      </>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowPreview((prev) => {
+                          const next = !prev;
+                          writePagePreviewVisiblePref(
+                            CMS_SECTIONS_EXPAND_SCOPE_NEW,
+                            next
+                          );
+                          return next;
+                        });
+                      }}
+                    >
+                      {showPreview ? (
+                        <EyeOff className="mr-1.5 h-4 w-4" />
+                      ) : (
+                        <Eye className="mr-1.5 h-4 w-4" />
+                      )}
+                      {showPreview ? "Hide preview" : "Show preview"}
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Drag the handle to reorder or remove a section. Add sections with{" "}
@@ -437,6 +467,7 @@ function NewPageContent() {
                   }
                   expandAllSignal={expandAllSignal}
                   collapseAllSignal={collapseAllSignal}
+                  minSlots={0}
                   disabled={pending}
                 />
               </div>
@@ -469,14 +500,16 @@ function NewPageContent() {
           </Tabs>
         </div>
 
-        <aside className={CMS_LAYOUT_PAGE_PREVIEW_ASIDE_CLASSNAME}>
-          <CmsLayoutPagePreviewAside
-            slots={slots}
-            layouts={layouts}
-            siteChrome={siteChrome}
-            siteChromePlaceholders={siteChromePlaceholders}
-          />
-        </aside>
+        {showPreview ? (
+          <aside className={CMS_LAYOUT_PAGE_PREVIEW_ASIDE_CLASSNAME}>
+            <CmsLayoutPagePreviewAside
+              slots={slots}
+              layouts={layouts}
+              siteChrome={siteChrome}
+              siteChromePlaceholders={siteChromePlaceholders}
+            />
+          </aside>
+        ) : null}
       </div>
     </div>
   );

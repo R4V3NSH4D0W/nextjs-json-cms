@@ -80,6 +80,7 @@ import {
   useCreateCmsLayout,
   useUpdateCmsLayout,
 } from "@/hooks/use-cms";
+import { useSaveShortcut } from "@/hooks/use-save-shortcut";
 import type { CmsCustomTool } from "@/lib/cms/api";
 
 export type { LayoutBuilderProps, SectionBlock, SectionBlockType };
@@ -396,6 +397,14 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
     router,
   ]);
 
+  useSaveShortcut(
+    () => {
+      if (savePending || isPublishing || sectionRootKeyInvalid) return;
+      void handlePublish();
+    },
+    { enabled: true },
+  );
+
   const isEmpty = blocks.length === 0;
   const rootDuplicates = useMemo(() => duplicateKeysAmong(blocks), [blocks]);
   const sectionRootKeyTrimmed = sectionRootKey.trim();
@@ -405,7 +414,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
 
   if (mode === "edit" && !layoutId) {
     return (
-      <div className="mx-auto w-full max-w-6xl pb-10">
+      <div className="w-full max-w-none px-4 pb-10 sm:px-6 lg:px-8">
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           Missing layout id. Use a valid layout URL.
         </div>
@@ -415,7 +424,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
 
   if (isEdit && layoutQuery.isLoading) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-10">
+      <div className="flex w-full max-w-none flex-col gap-6 px-4 pb-10 sm:px-6 lg:px-8">
         <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 px-6 py-16 text-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Loading layout…</p>
@@ -426,7 +435,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
 
   if (isEdit && layoutQuery.isError) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-10">
+      <div className="flex w-full max-w-none flex-col gap-4 px-4 pb-10 sm:px-6 lg:px-8">
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {layoutQuery.error instanceof Error
             ? layoutQuery.error.message
@@ -437,7 +446,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pb-10">
+    <div className="flex w-full max-w-none flex-col gap-8 px-4 pb-10 sm:px-6 lg:px-8">
       <header className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">

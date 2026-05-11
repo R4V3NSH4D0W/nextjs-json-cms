@@ -4,6 +4,7 @@ import {
   cmsApi,
   type CmsBlockType,
   type CmsCustomToolDefinition,
+  type CmsCustomToolsExportPayload,
   type CmsPageCreateBody,
   type CmsPageUpdateBody,
 } from "@/lib/cms/api";
@@ -332,6 +333,56 @@ export const useDeleteCmsCustomTool = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to delete tool");
+    },
+  });
+};
+
+export const useExportCmsCustomTools = () => {
+  const { currentProject } = useCurrentProject();
+  return useMutation({
+    mutationFn: (ids?: string[]) =>
+      cmsApi.exportCustomTools(currentProject!.slug, ids),
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to export tools");
+    },
+  });
+};
+
+export const useExportCmsCustomTool = () => {
+  const { currentProject } = useCurrentProject();
+  return useMutation({
+    mutationFn: (id: string) => cmsApi.exportCustomTool(currentProject!.slug, id),
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to export tool");
+    },
+  });
+};
+
+export const useImportCmsCustomTools = () => {
+  const { currentProject } = useCurrentProject();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CmsCustomToolsExportPayload | Record<string, unknown>) =>
+      cmsApi.importCustomTools(currentProject!.slug, payload),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
+      if (result.created.length > 0) {
+        toast.success(
+          `Imported ${result.created.length} tool${
+            result.created.length === 1 ? "" : "s"
+          }`,
+        );
+      }
+      if (result.rejected.length > 0) {
+        toast.error(
+          `${result.rejected.length} item${
+            result.rejected.length === 1 ? " was" : "s were"
+          } skipped during import`,
+        );
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to import tools");
     },
   });
 };

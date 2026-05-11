@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Hammer, Loader2 } from "lucide-react";
 import {
   useCmsCustomTool,
@@ -22,6 +23,7 @@ import {
   useCreateCmsCustomTool,
   useUpdateCmsCustomTool,
 } from "@/hooks/use-cms";
+import { useSaveShortcut } from "@/hooks/use-save-shortcut";
 import type { CmsCustomTool, CmsCustomToolDefinition } from "@/lib/cms/api";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -50,7 +52,6 @@ import { CmsEditorHeader } from "@/components/cms/cms-editor-header";
 
 function blockToDefinition(
   block: SectionBlock,
-  isRoot = false,
 ): CmsCustomToolDefinition {
   if (block.type === "link") {
     return {
@@ -61,12 +62,12 @@ function blockToDefinition(
     };
   }
   if (block.type === "array" || block.type === "object") {
-    const definition: CmsCustomToolDefinition = {
+    return {
+      type: block.type,
       key: block.key,
       fields: block.children.map((child) => blockToDefinition(child)),
       ...(block.required ? { required: true } : {}),
     };
-    return isRoot ? definition : { type: block.type, ...definition };
   }
   return {
     type: block.type,
@@ -120,6 +121,7 @@ function CmsToolBuilderForm({
   toolId?: string;
   initialTool?: CmsCustomTool;
 }) {
+  const router = useRouter();
   const isEdit = Boolean(toolId);
   const { data: allToolsData } = useCmsCustomTools();
   const createTool = useCreateCmsCustomTool();
@@ -276,7 +278,7 @@ function CmsToolBuilderForm({
     const key = sanitizeSectionRootKeyInput(toolKey || name) || "group";
     const definition: CmsCustomToolDefinition = {
       key,
-      fields: blocks.map((block) => blockToDefinition(block, true)),
+      fields: blocks.map((block) => blockToDefinition(block)),
     };
 
     if (isEdit && toolId) {
@@ -288,19 +290,28 @@ function CmsToolBuilderForm({
           definition,
         },
       });
+      router.push("/dashboard/cms/tools");
       return;
     }
 
-    const res = await createTool.mutateAsync({
+    await createTool.mutateAsync({
       name: trimmedName,
       description: description.trim() || null,
       definition,
     });
-    window.location.href = `/dashboard/cms/tools/${res.tool.id}`;
+    router.push("/dashboard/cms/tools");
   }
 
+  useSaveShortcut(
+    () => {
+      if (isSaving) return;
+      void handleSave();
+    },
+    { enabled: true },
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-10">
+    <div className="flex w-full max-w-none flex-col gap-6 px-4 pb-10 sm:px-6 lg:px-8">
       <Button variant="ghost" size="sm" className="w-fit" asChild>
         <Link href="/dashboard/cms/tools">← Tools</Link>
       </Button>

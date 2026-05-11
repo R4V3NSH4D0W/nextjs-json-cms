@@ -17,9 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/shared/utils";
 
 export function AdminHeader({
@@ -30,8 +29,6 @@ export function AdminHeader({
   mode?: "admin" | "dashboard";
 }) {
   const queryClient = useQueryClient();
-  const { open } = useSidebar();
-  const isMobile = useIsMobile();
   const { currentProject, projects } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
   const notificationAudience =
@@ -118,13 +115,11 @@ export function AdminHeader({
     });
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 lg:px-6">
-      {(isMobile || !open) && (
-        <SidebarTrigger className="-ml-1 size-9 rounded-md border border-border/60">
-          <PanelLeft className="size-5" />
-          <span className="sr-only">Toggle sidebar</span>
-        </SidebarTrigger>
-      )}
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 lg:px-6">
+      <SidebarTrigger className="-ml-1 size-9 rounded-md border border-border/60">
+        <PanelLeft className="size-5" />
+        <span className="sr-only">Toggle sidebar</span>
+      </SidebarTrigger>
       <div className="flex flex-1 items-center justify-between gap-4">
         <div className="min-w-0 flex items-center gap-2">
           <p className="truncate text-sm font-medium text-muted-foreground sm:text-[15px]">

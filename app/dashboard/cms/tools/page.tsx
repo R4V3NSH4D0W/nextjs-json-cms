@@ -1,23 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { Hammer, Loader2, Pencil, Trash2 } from "lucide-react";
-import { useCmsCustomTools, useDeleteCmsCustomTool } from "@/hooks/use-cms";
+import { Download, Hammer, Loader2, Pencil, Trash2, Upload } from "lucide-react";
+import {
+  useCmsCustomTools,
+  useDeleteCmsCustomTool,
+  useExportCmsCustomTool,
+  useExportCmsCustomTools,
+  useImportCmsCustomTools,
+} from "@/hooks/use-cms";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import type { CmsCustomToolsExportPayload } from "@/lib/cms/api";
+
+function downloadJson(payload: CmsCustomToolsExportPayload, filename: string) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(href);
+}
 
 export default function CmsToolsListPage() {
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const { data, isLoading, isError, error, refetch } = useCmsCustomTools();
   const deleteTool = useDeleteCmsCustomTool();
+  const exportTool = useExportCmsCustomTool();
+  const exportTools = useExportCmsCustomTools();
+  const importTools = useImportCmsCustomTools();
   const tools = useMemo(
     () =>
       Object.values(data?.tools ?? {})
@@ -38,10 +66,66 @@ export default function CmsToolsListPage() {
 
   const totalTools = Object.keys(data?.tools ?? {}).length;
   const hasSearch = search.trim().length > 0;
+  const allVisibleIds = tools.map((tool) => tool.id);
+  const selectedVisibleCount = allVisibleIds.filter((id) => selectedIds.has(id)).length;
+  const allVisibleSelected = tools.length > 0 && selectedVisibleCount === tools.length;
+  const exportPending = exportTool.isPending || exportTools.isPending;
 
   async function handleDelete(id: string) {
     await deleteTool.mutateAsync(id);
     setDeleteTarget(null);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  async function handleExportSelected() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      toast.error("Select at least one tool to export.");
+      return;
+    }
+    const payload = await exportTools.mutateAsync(ids);
+    downloadJson(payload, `cms-tools-selected-${Date.now()}.json`);
+  }
+
+  async function handleExportAll() {
+    const payload = await exportTools.mutateAsync([]);
+    downloadJson(payload, `cms-tools-all-${Date.now()}.json`);
+  }
+
+  async function handleExportOne(id: string, name: string) {
+    const payload = await exportTool.mutateAsync(id);
+    const safeName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") || "tool";
+    downloadJson(payload, `cms-tool-${safeName}.json`);
+  }
+
+  async function handleImportFile(file: File) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      toast.error("Invalid JSON file.");
+      return;
+    }
+    const payload =
+      parsed && typeof parsed === "object" && "kind" in parsed
+        ? (parsed as Record<string, unknown>)
+        : Array.isArray(parsed)
+          ? ({ kind: "cms-custom-tools", version: 1, tools: parsed } as Record<string, unknown>)
+          : ({
+              kind: "cms-custom-tools",
+              version: 1,
+              tools: [parsed],
+            } as Record<string, unknown>);
+    const result = await importTools.mutateAsync(payload);
+    if (result.rejected.length > 0) {
+      toast.error(
+        `Imported ${result.created.length} tool(s), skipped ${result.rejected.length}.`,
+      );
+    }
   }
 
   return (
@@ -61,7 +145,7 @@ export default function CmsToolsListPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <Input
           type="text"
           placeholder="Search tools"
@@ -69,11 +153,58 @@ export default function CmsToolsListPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <p className="text-sm text-muted-foreground">
-          {hasSearch
-            ? `Showing ${tools.length} of ${totalTools}`
-            : `Showing ${totalTools} tool${totalTools === 1 ? "" : "s"}`}
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <p className="text-sm text-muted-foreground">
+            {hasSearch
+              ? `Showing ${tools.length} of ${totalTools}`
+              : `Showing ${totalTools} tool${totalTools === 1 ? "" : "s"}`}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importTools.isPending}
+          >
+            {importTools.isPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Import
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => void handleExportSelected()}
+            disabled={selectedIds.size === 0 || exportPending}
+          >
+            {exportPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Export selected
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => void handleExportAll()}
+            disabled={totalTools === 0 || exportPending}
+          >
+            {exportPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Export all
+          </Button>
+        </div>
       </div>
 
       {isError ? (
@@ -101,11 +232,48 @@ export default function CmsToolsListPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={allVisibleSelected}
+              onCheckedChange={(checked) => {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  if (checked) {
+                    for (const id of allVisibleIds) next.add(id);
+                  } else {
+                    for (const id of allVisibleIds) next.delete(id);
+                  }
+                  return next;
+                });
+              }}
+            />
+            <p className="text-sm text-muted-foreground">
+              {selectedVisibleCount === 0
+                ? "Select visible tools"
+                : `${selectedVisibleCount} visible tool${
+                    selectedVisibleCount === 1 ? "" : "s"
+                  } selected`}
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {tools.map((tool) => (
             <Card key={tool.id} className="border-border/60">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">{tool.name}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={selectedIds.has(tool.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (checked) next.add(tool.id);
+                        else next.delete(tool.id);
+                        return next;
+                      });
+                    }}
+                  />
+                  <CardTitle className="text-base">{tool.name}</CardTitle>
+                </div>
                 {tool.description ? (
                   <p className="text-xs text-muted-foreground">
                     {tool.description}
@@ -129,6 +297,17 @@ export default function CmsToolsListPage() {
                     size="sm"
                     variant="outline"
                     className="h-8"
+                    onClick={() => void handleExportOne(tool.id, tool.name)}
+                    disabled={exportPending}
+                  >
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    Export
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
                     onClick={() =>
                       setDeleteTarget({ id: tool.id, name: tool.name })
                     }
@@ -142,7 +321,22 @@ export default function CmsToolsListPage() {
             </Card>
           ))}
         </div>
+        </>
       )}
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            void handleImportFile(file);
+          }
+          e.currentTarget.value = "";
+        }}
+      />
 
       <AlertDialog
         open={deleteTarget !== null}

@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useQueryClient } from "@/lib/shared/react-query";
@@ -62,6 +62,10 @@ import {
   readSectionsExpandedPref,
   writeSectionsExpandedPref,
 } from "@/lib/cms/sections-expand-pref";
+import {
+  readPagePreviewVisiblePref,
+  writePagePreviewVisiblePref,
+} from "@/lib/cms/page-preview-pref";
 import { toast } from "sonner";
 import {
   clearCmsPageEditTransientDraft,
@@ -136,6 +140,7 @@ function CmsPageEditContent() {
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   // Start with pref loaded = false only to read localStorage once on mount.
   const [defaultSectionExpanded, setDefaultSectionExpanded] = useState(true);
+  const [showPreview, setShowPreview] = useState(true);
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -168,6 +173,7 @@ function CmsPageEditContent() {
   useEffect(() => {
     if (!id) return;
     setDefaultSectionExpanded(readSectionsExpandedPref(id));
+    setShowPreview(readPagePreviewVisiblePref(id));
   }, [id]);
 
   // ── Hydrate editor from server page data ──────────────────────────────────
@@ -438,7 +444,7 @@ function CmsPageEditContent() {
   const pending = syncing;
 
   return (
-    <div className="flex flex-col space-y-5 pb-24">
+    <div className="flex flex-col space-y-5 px-4 pb-24 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4">
         <Button variant="ghost" className="w-fit gap-2 px-0" asChild>
           <Link href="/dashboard/cms/pages">
@@ -527,8 +533,9 @@ function CmsPageEditContent() {
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                   <h2 className="text-lg font-semibold">Page content</h2>
-                  {slots.length > 0 ? (
-                    <div className="flex shrink-0 flex-wrap gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {slots.length > 0 ? (
+                      <>
                       <Button
                         type="button"
                         variant="outline"
@@ -553,8 +560,28 @@ function CmsPageEditContent() {
                       >
                         Collapse
                       </Button>
-                    </div>
-                  ) : null}
+                      </>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowPreview((prev) => {
+                          const next = !prev;
+                          writePagePreviewVisiblePref(id, next);
+                          return next;
+                        });
+                      }}
+                    >
+                      {showPreview ? (
+                        <EyeOff className="mr-1.5 h-4 w-4" />
+                      ) : (
+                        <Eye className="mr-1.5 h-4 w-4" />
+                      )}
+                      {showPreview ? "Hide preview" : "Show preview"}
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Drag the handle to reorder or remove a section. Add sections with{" "}
@@ -582,6 +609,7 @@ function CmsPageEditContent() {
                   defaultSectionExpanded={defaultSectionExpanded}
                   expandAllSignal={expandAllSignal}
                   collapseAllSignal={collapseAllSignal}
+                  minSlots={0}
                   disabled={pending}
                 />
               </div>
@@ -623,14 +651,16 @@ function CmsPageEditContent() {
           </Tabs>
         </div>
 
-        <aside className={CMS_LAYOUT_PAGE_PREVIEW_ASIDE_CLASSNAME}>
-          <CmsLayoutPagePreviewAside
-            slots={slots}
-            layouts={layouts}
-            siteChrome={siteChrome}
-            siteChromePlaceholders={siteChromePlaceholders}
-          />
-        </aside>
+        {showPreview ? (
+          <aside className={CMS_LAYOUT_PAGE_PREVIEW_ASIDE_CLASSNAME}>
+            <CmsLayoutPagePreviewAside
+              slots={slots}
+              layouts={layouts}
+              siteChrome={siteChrome}
+              siteChromePlaceholders={siteChromePlaceholders}
+            />
+          </aside>
+        ) : null}
       </div>
     </div>
   );
