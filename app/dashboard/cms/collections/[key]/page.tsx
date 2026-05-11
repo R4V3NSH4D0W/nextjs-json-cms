@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
+  ImageOff,
   Loader2,
   Pencil,
   Plus,
@@ -203,6 +204,21 @@ function buildPreviewRows(
   return rows;
 }
 
+function hasEmptyImageField(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasEmptyImageField(entry));
+  }
+  if (!value || typeof value !== "object") return false;
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    if (/image|thumbnail|photo|avatar|cover/i.test(key)) {
+      if (typeof nested === "string" && nested.trim().length === 0) return true;
+      if (nested == null) return true;
+    }
+    if (hasEmptyImageField(nested)) return true;
+  }
+  return false;
+}
+
 function itemMatchesSearch(
   item: CmsCollectionItem,
   previewRows: Array<{ label: string; value: string }>,
@@ -242,6 +258,7 @@ function SortableCollectionCard({
   item,
   previewImage,
   previewRows,
+  showImagePlaceholder,
   onEdit,
   onDelete,
   isBusy,
@@ -250,6 +267,7 @@ function SortableCollectionCard({
   item: CmsCollectionItem;
   previewImage: CmsCollectionItemPreviewImage | null;
   previewRows: Array<{ label: string; value: string }>;
+  showImagePlaceholder: boolean;
   onEdit: () => void;
   onDelete: () => void;
   isBusy: boolean;
@@ -267,7 +285,7 @@ function SortableCollectionCard({
     <Card
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "z-10 ring-1 ring-primary/40" : ""}
+      className={`h-full ${isDragging ? "z-10 ring-1 ring-primary/40" : ""}`}
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
@@ -292,31 +310,38 @@ function SortableCollectionCard({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {previewImage ? (
-          <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
-            <Image
-              src={absoluteApiUrl(previewImage.url)}
-              alt={item.title}
-              fill
-              className="object-cover object-center"
-              sizes="(min-width: 1280px) 30vw, (min-width: 640px) 45vw, 90vw"
-            />
+      <CardContent className="flex flex-1 flex-col gap-3">
+        {previewImage || showImagePlaceholder ? (
+          <div className="relative h-36 w-full overflow-hidden rounded-md border bg-muted/50">
+            {previewImage ? (
+              <Image
+                src={absoluteApiUrl(previewImage.url)}
+                alt={item.title}
+                fill
+                className="object-cover object-center"
+                sizes="(min-width: 1280px) 30vw, (min-width: 640px) 45vw, 90vw"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground">
+                <ImageOff className="h-4 w-4" />
+                <span>No image selected</span>
+              </div>
+            )}
           </div>
         ) : null}
         {previewRows.length > 0 ? (
-          <div className="rounded-md border bg-muted/30 p-2">
+          <div className="flex-1 rounded-md border bg-muted/30 p-2">
             {previewRows.map((row) => (
               <div key={`${item.id}-${row.label}`} className="py-1 text-xs">
                 <span className="text-muted-foreground">{row.label}: </span>
-                <span>{row.value}</span>
+                <span className="line-clamp-2 align-top">{row.value}</span>
               </div>
             ))}
           </div>
         ) : previewImage ? null : (
-          <p className="text-xs text-muted-foreground">No previewable fields.</p>
+          <p className="flex-1 text-xs text-muted-foreground">No previewable fields.</p>
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" onClick={onEdit}>
             <Pencil className="mr-1.5 h-3.5 w-3.5" />
             Edit
@@ -492,6 +517,7 @@ export default function CmsCollectionItemsPage() {
       {
         previewRows: Array<{ label: string; value: string }>;
         previewImage: CmsCollectionItemPreviewImage | null;
+        showImagePlaceholder: boolean;
       }
     >();
     for (const item of orderedItems) {
@@ -502,6 +528,7 @@ export default function CmsCollectionItemsPage() {
       map.set(item.id, {
         previewRows: buildPreviewRows(schemaDefs, payload),
         previewImage: findCollectionItemPreviewImage(payload),
+        showImagePlaceholder: hasEmptyImageField(payload),
       });
     }
     return map;
@@ -768,6 +795,7 @@ export default function CmsCollectionItemsPage() {
                           item={item}
                           previewImage={preview?.previewImage ?? null}
                           previewRows={preview?.previewRows ?? []}
+                          showImagePlaceholder={preview?.showImagePlaceholder ?? false}
                           onEdit={() => loadItemForEdit(item)}
                           onDelete={() => void handleDeleteItem(item)}
                           isBusy={isReordering || deleteItem.isPending}
@@ -788,6 +816,7 @@ export default function CmsCollectionItemsPage() {
                       item={item}
                       previewImage={preview?.previewImage ?? null}
                       previewRows={preview?.previewRows ?? []}
+                      showImagePlaceholder={preview?.showImagePlaceholder ?? false}
                       onEdit={() => loadItemForEdit(item)}
                       onDelete={() => void handleDeleteItem(item)}
                       isBusy={deleteItem.isPending}
