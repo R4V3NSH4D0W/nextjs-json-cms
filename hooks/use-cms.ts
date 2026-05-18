@@ -370,15 +370,13 @@ export const useImportCmsCustomTools = () => {
       queryClient.invalidateQueries({ queryKey: ["cms-tools"] });
       if (result.created.length > 0) {
         toast.success(
-          `Imported ${result.created.length} tool${
-            result.created.length === 1 ? "" : "s"
+          `Imported ${result.created.length} tool${result.created.length === 1 ? "" : "s"
           }`,
         );
       }
       if (result.rejected.length > 0) {
         toast.error(
-          `${result.rejected.length} item${
-            result.rejected.length === 1 ? " was" : "s were"
+          `${result.rejected.length} item${result.rejected.length === 1 ? " was" : "s were"
           } skipped during import`,
         );
       }
@@ -404,12 +402,12 @@ export const useCmsCollectionItems = (
   const enabled = options?.enabled ?? true;
   const queryOptions = options
     ? {
-        includeInactive: options.includeInactive,
-        includeDraft: options.includeDraft,
-        limit: options.limit,
-        offset: options.offset,
-        sort: options.sort,
-      }
+      includeInactive: options.includeInactive,
+      includeDraft: options.includeDraft,
+      limit: options.limit,
+      offset: options.offset,
+      sort: options.sort,
+    }
     : undefined;
   return useQuery({
     queryKey: ["cms-collections", currentProject?.slug, key, queryOptions],

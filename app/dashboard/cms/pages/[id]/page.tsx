@@ -283,10 +283,10 @@ function CmsPageEditContent() {
           return next.map((s, idx) =>
             idx === i
               ? {
-                  ...s,
-                  configValues: templatePayload as Record<string, unknown>,
-                  appliedLayoutId: addLayoutId,
-                }
+                ...s,
+                configValues: templatePayload as Record<string, unknown>,
+                appliedLayoutId: addLayoutId,
+              }
               : s
           );
         }
@@ -536,30 +536,30 @@ function CmsPageEditContent() {
                   <div className="flex shrink-0 flex-wrap gap-2">
                     {slots.length > 0 ? (
                       <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          writeSectionsExpandedPref(id, "expanded");
-                          setExpandAllSignal((n) => n + 1);
-                        }}
-                      >
-                        Expand
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          writeSectionsExpandedPref(id, "collapsed");
-                          setCollapseAllSignal((n) => n + 1);
-                        }}
-                      >
-                        Collapse
-                      </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => {
+                            writeSectionsExpandedPref(id, "expanded");
+                            setExpandAllSignal((n) => n + 1);
+                          }}
+                        >
+                          Expand
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => {
+                            writeSectionsExpandedPref(id, "collapsed");
+                            setCollapseAllSignal((n) => n + 1);
+                          }}
+                        >
+                          Collapse
+                        </Button>
                       </>
                     ) : null}
                     <Button

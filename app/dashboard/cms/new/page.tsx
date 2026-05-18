@@ -376,36 +376,36 @@ function NewPageContent() {
                   <div className="flex shrink-0 flex-wrap gap-2">
                     {slots.length > 0 ? (
                       <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          writeSectionsExpandedPref(
-                            CMS_SECTIONS_EXPAND_SCOPE_NEW,
-                            "expanded"
-                          );
-                          setExpandAllSignal((n) => n + 1);
-                        }}
-                      >
-                        Expand
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          writeSectionsExpandedPref(
-                            CMS_SECTIONS_EXPAND_SCOPE_NEW,
-                            "collapsed"
-                          );
-                          setCollapseAllSignal((n) => n + 1);
-                        }}
-                      >
-                        Collapse
-                      </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => {
+                            writeSectionsExpandedPref(
+                              CMS_SECTIONS_EXPAND_SCOPE_NEW,
+                              "expanded"
+                            );
+                            setExpandAllSignal((n) => n + 1);
+                          }}
+                        >
+                          Expand
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => {
+                            writeSectionsExpandedPref(
+                              CMS_SECTIONS_EXPAND_SCOPE_NEW,
+                              "collapsed"
+                            );
+                            setCollapseAllSignal((n) => n + 1);
+                          }}
+                        >
+                          Collapse
+                        </Button>
                       </>
                     ) : null}
                     <Button

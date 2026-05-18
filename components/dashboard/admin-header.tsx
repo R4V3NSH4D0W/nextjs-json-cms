@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
-import { Bell, ChevronDown, ExternalLink, LogOut, PanelLeft, ShieldCheck } from "lucide-react";
+import { Bell, ChevronDown, ExternalLink, LogOut, PanelLeft, ShieldCheck, KeyRound } from "lucide-react";
 
 import { useCurrentProject } from "@/components/providers/current-project-provider";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
@@ -20,6 +22,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/shared/utils";
+import { ChangePasswordDialog } from "@/components/dashboard/change-password-dialog";
 
 export function AdminHeader({
   userEmail,
@@ -28,6 +31,7 @@ export function AdminHeader({
   userEmail: string;
   mode?: "admin" | "dashboard";
 }) {
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const queryClient = useQueryClient();
   const { currentProject, projects } = useCurrentProject();
   const { isAdmin } = useCurrentUser();
@@ -345,6 +349,18 @@ export function AdminHeader({
                   </Link>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem 
+                className="rounded-md cursor-pointer"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setShowPasswordDialog(true);
+                }}
+              >
+                <div className="flex w-full items-center gap-2 text-left">
+                  <KeyRound className="size-4" />
+                  Change password
+                </div>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-md cursor-pointer">
                 <form action={logoutAction} className="w-full">
                   <button
@@ -360,6 +376,10 @@ export function AdminHeader({
           </DropdownMenu>
         </div>
       </div>
+      <ChangePasswordDialog 
+        open={showPasswordDialog} 
+        onOpenChange={setShowPasswordDialog} 
+      />
     </header>
   );
 }

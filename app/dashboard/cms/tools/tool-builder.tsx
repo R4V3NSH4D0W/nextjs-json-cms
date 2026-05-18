@@ -29,6 +29,7 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   addChildToContainer,
   addCustomChildToContainer,
@@ -177,6 +178,11 @@ function CmsToolBuilderForm({
       const keys = siblingKeysFrom(prev);
       return [...prev, createBlock(type, 0, keys)];
     });
+    toast.success(`${type} added`, {
+      id: "add-tool",
+      position: "bottom-right",
+      style: { background: "black", color: "white", border: "1px solid #333" },
+    });
   }, []);
 
   const addCustomRoot = useCallback(
@@ -184,7 +190,13 @@ function CmsToolBuilderForm({
       setBlocks((prev) => {
         const keys = siblingKeysFrom(prev);
         try {
-          return [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
+          const newBlocks = [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
+          toast.success(`${tool.name} added`, {
+            id: "add-tool",
+            position: "bottom-right",
+            style: { background: "black", color: "white", border: "1px solid #333" },
+          });
+          return newBlocks;
         } catch (error) {
           showAlert(
             `Tool "${tool.name}" is invalid`,
@@ -204,6 +216,11 @@ function CmsToolBuilderForm({
       setBlocks((prev) =>
         addChildToContainer(prev, containerId, type, childDepth),
       );
+      toast.success(`${type} added to container`, {
+        id: "add-tool",
+        position: "bottom-right",
+        style: { background: "black", color: "white", border: "1px solid #333" },
+      });
     },
     [],
   );
@@ -212,12 +229,18 @@ function CmsToolBuilderForm({
     (containerId: string, tool: CmsCustomTool, childDepth: number) => {
       setBlocks((prev) => {
         try {
-          return addCustomChildToContainer(
+          const newBlocks = addCustomChildToContainer(
             prev,
             containerId,
             tool.definition,
             childDepth,
           );
+          toast.success(`${tool.name} added to container`, {
+            id: "add-tool",
+            position: "bottom-right",
+            style: { background: "black", color: "white", border: "1px solid #333" },
+          });
+          return newBlocks;
         } catch (error) {
           showAlert(
             `Tool "${tool.name}" is invalid`,

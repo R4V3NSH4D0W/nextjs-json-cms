@@ -104,6 +104,7 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
   const [sectionRootKey, setSectionRootKey] = useState("section");
   /** Stored layout name for the API (`CmsLayout.name`). */
   const [layoutName, setLayoutName] = useState("");
+  const [isSectionRootKeyManual, setIsSectionRootKeyManual] = useState(isEdit);
   /** Optional screenshot / wireframe URL (layout metadata, not schema JSON). */
   const [referenceImageUrl, setReferenceImageUrl] = useState("");
   const [pendingReferenceImageFile, setPendingReferenceImageFile] =
@@ -167,6 +168,11 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
       const keys = siblingKeysFrom(prev);
       return [...prev, createBlock(type, 0, keys)];
     });
+    toast.success(`${type} added`, {
+      id: "add-tool",
+      position: "bottom-right",
+      style: { background: "black", color: "white", border: "1px solid #333" },
+    });
   }, []);
 
   const addIntoContainer = useCallback(
@@ -174,6 +180,11 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
       setBlocks((prev) =>
         addChildToContainer(prev, containerId, type, childDepth),
       );
+      toast.success(`${type} added to container`, {
+        id: "add-tool",
+        position: "bottom-right",
+        style: { background: "black", color: "white", border: "1px solid #333" },
+      });
     },
     [],
   );
@@ -182,7 +193,13 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
     setBlocks((prev) => {
       const keys = siblingKeysFrom(prev);
       try {
-        return [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
+        const newBlocks = [...prev, createBlockFromCustomTool(tool.definition, 0, keys)];
+        toast.success(`${tool.name} added`, {
+          id: "add-tool",
+          position: "bottom-right",
+          style: { background: "black", color: "white", border: "1px solid #333" },
+        });
+        return newBlocks;
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -198,12 +215,18 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
     (containerId: string, tool: CmsCustomTool, childDepth: number) => {
       setBlocks((prev) => {
         try {
-          return addCustomChildToContainer(
+          const newBlocks = addCustomChildToContainer(
             prev,
             containerId,
             tool.definition,
             childDepth,
           );
+          toast.success(`${tool.name} added to container`, {
+            id: "add-tool",
+            position: "bottom-right",
+            style: { background: "black", color: "white", border: "1px solid #333" },
+          });
+          return newBlocks;
         } catch (error) {
           toast.error(
             error instanceof Error
@@ -517,7 +540,13 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
               <Input
                 id="layout-display-name"
                 value={layoutName}
-                onChange={(e) => setLayoutName(e.target.value)}
+                onChange={(e) => {
+                  const nextName = e.target.value;
+                  setLayoutName(nextName);
+                  if (!isEdit && !isSectionRootKeyManual) {
+                    setSectionRootKey(sanitizeSectionRootKeyInput(nextName) || "section");
+                  }
+                }}
                 placeholder="e.g. Blog section"
                 spellCheck={false}
                 className="text-sm"
@@ -543,9 +572,10 @@ function LayoutBuilder({ mode, layoutId }: LayoutBuilderProps) {
               <Input
                 id="section-root-key"
                 value={sectionRootKey}
-                onChange={(e) =>
-                  setSectionRootKey(sanitizeSectionRootKeyInput(e.target.value))
-                }
+                onChange={(e) => {
+                  setIsSectionRootKeyManual(true);
+                  setSectionRootKey(sanitizeSectionRootKeyInput(e.target.value));
+                }}
                 placeholder="hero_banner"
                 spellCheck={false}
                 className={cn(
