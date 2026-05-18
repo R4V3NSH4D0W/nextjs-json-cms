@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Mark, mergeAttributes } from "@tiptap/core";
+import TiptapBold from "@tiptap/extension-bold";
 import Color from "@tiptap/extension-color";
+import TiptapItalic from "@tiptap/extension-italic";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -46,6 +49,77 @@ export interface CmsHtmlDescriptionEditorProps {
   variant?: "default" | "compact";
 }
 
+/**
+ * Preserves <span> elements with arbitrary inline styles, class, and IDs.
+ * TipTap's StarterKit strips unknown attributes from pasted HTML without this.
+ */
+const StyledSpan = Mark.create({
+  name: "styledSpan",
+  spanning: true,
+  inclusive: true,
+  addAttributes() {
+    return {
+      style: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute("style") },
+      class: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute("class") },
+      id: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute("id") },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span" }];
+  },
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
+    return ["span", mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+/**
+ * Extends the built-in Italic mark to also preserve inline style, class, and id
+ * attributes on <em> elements (e.g. <em style="color: #D4A857;">).
+ */
+const StyledItalic = TiptapItalic.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("style"),
+        renderHTML: (attrs: Record<string, string>) =>
+          attrs.style ? { style: attrs.style } : {},
+      },
+      class: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("class"),
+        renderHTML: (attrs: Record<string, string>) =>
+          attrs.class ? { class: attrs.class } : {},
+      },
+    };
+  },
+});
+
+/**
+ * Extends the built-in Bold mark to also preserve inline style, class, and id
+ * attributes on <strong> / <b> elements.
+ */
+const StyledBold = TiptapBold.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("style"),
+        renderHTML: (attrs: Record<string, string>) =>
+          attrs.style ? { style: attrs.style } : {},
+      },
+      class: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("class"),
+        renderHTML: (attrs: Record<string, string>) =>
+          attrs.class ? { class: attrs.class } : {},
+      },
+    };
+  },
+});
+
 export function CmsHtmlDescriptionEditor({
   value,
   onChange,
@@ -70,6 +144,9 @@ export function CmsHtmlDescriptionEditor({
     () => [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        // Disable built-in italic/bold so our styled versions take over
+        italic: false,
+        bold: false,
         link: {
           openOnClick: false,
           HTMLAttributes: {
@@ -80,6 +157,9 @@ export function CmsHtmlDescriptionEditor({
       }),
       TextStyle,
       Color.configure({ types: ["textStyle"] }),
+      StyledSpan,
+      StyledItalic,
+      StyledBold,
       Placeholder.configure({ placeholder }),
     ],
     [placeholder]
