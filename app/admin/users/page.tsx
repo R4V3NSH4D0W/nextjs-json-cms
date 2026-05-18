@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery } from "@/lib/shared/react-query";
+import { useQuery, useMutation, useQueryClient } from "@/lib/shared/react-query";
 import { projectsApi } from "@/lib/projects/api";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -32,9 +33,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 
 export default function AdminUsersPage() {
+  const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<{ id: string; email: string } | null>(null);
+  const [deleteUser, setDeleteUser] = useState<{ id: string; email: string } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -42,6 +46,19 @@ export default function AdminUsersPage() {
   });
 
   const users = data?.users ?? [];
+
+  const deleteMutation = useMutation({
+    mutationFn: (userId: string) => projectsApi.deleteUser(userId),
+    onSuccess: () => {
+      toast.success("User deleted successfully.");
+      setDeleteUser(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user.");
+      setDeleteUser(null);
+    },
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pb-12">
@@ -108,15 +125,15 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell className="text-right pr-6">
                     <div className="flex items-center justify-end gap-2">
-                       <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="h-8 gap-2 text-[10px] font-bold uppercase tracking-tight opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => setSelectedUser({ id: user.id, email: user.email })}
                       >
                         <History className="size-3.5" /> Activity
                       </Button>
-                      
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -129,7 +146,10 @@ export default function AdminUsersPage() {
                           <DropdownMenuItem className="gap-2">
                             <ShieldCheck className="size-4" /> Toggle Admin
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                          <DropdownMenuItem
+                            className="gap-2 text-destructive focus:text-destructive"
+                            onClick={() => setDeleteUser({ id: user.id, email: user.email })}
+                          >
                             Remove User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -165,6 +185,23 @@ export default function AdminUsersPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog 
+        open={!!deleteUser} 
+        onOpenChange={(open) => !open && setDeleteUser(null)}
+        title="Are you absolutely sure?"
+        description={
+          <>
+            This will permanently delete the user account <strong>{deleteUser?.email}</strong> and remove them from all projects.
+            This action cannot be undone.
+          </>
+        }
+        confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete User"}
+        destructive={true}
+        onConfirm={() => {
+          if (deleteUser) deleteMutation.mutate(deleteUser.id);
+        }}
+      />
     </div>
   );
 }

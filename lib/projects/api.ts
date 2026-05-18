@@ -100,6 +100,8 @@ export const projectsApi = {
     api.get<{ success: true; users: (AdminUserSummary & { _count: { projectAccess: number } })[] }>(
       "/api/v1/admin/projects/users"
     ),
+  deleteUser: (userId: string) =>
+    api.delete<{ success: true }>(`/api/v1/admin/projects/users/${userId}`),
   listAuditLogs: (params?: { performerId?: string; targetUserId?: string; projectSlug?: string; action?: string; limit?: number; page?: number }) =>
     api.get<{ success: true; logs: AuditLogEntry[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/api/v1/admin/audit", { params }),
   listNotifications: (params?: { limit?: number }) =>
