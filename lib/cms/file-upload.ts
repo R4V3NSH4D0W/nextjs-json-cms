@@ -35,3 +35,24 @@ export async function uploadCmsFile(file: File, projectSlug: string): Promise<st
   }
   return url;
 }
+
+/**
+ * Uploads an icon image (PNG, SVG, WebP, ICO, etc.) to the project's `icon/` subfolder.
+ * Icons are stored at `assets/uploads/{projectSlug}/icon/` and served publicly
+ * at `/api/media/{projectSlug}/icon/...`.
+ *
+ * @returns The public URL of the uploaded icon.
+ */
+export async function uploadCmsIconImage(file: File, projectSlug: string): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post<unknown>(
+    `/api/v1/admin/projects/${projectSlug}/media/gallery/icons/upload`,
+    formData,
+  );
+  const url = parseUploadUrl(res);
+  if (!url) {
+    throw new Error("Upload did not return a URL");
+  }
+  return url;
+}

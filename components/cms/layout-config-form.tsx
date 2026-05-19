@@ -50,6 +50,7 @@ import {
 import { cn } from "@/lib/shared/utils";
 import { CmsReferenceScreenshotField } from "@/components/cms/cms-reference-screenshot-field";
 import { CmsFileUploadField } from "@/components/cms/cms-file-upload-field";
+import { CmsIconImageUploadField } from "@/components/cms/cms-icon-image-upload-field";
 import { useCmsCollectionItems } from "@/hooks/use-cms";
 import {
   findCollectionItemPreviewImage,
@@ -1164,6 +1165,18 @@ function FieldRow({
         <div className="min-w-0 space-y-2">
           <FieldLabelLine htmlFor={fid} def={def} />
           <CmsFileUploadField
+            inputId={fid}
+            hideLabel
+            value={typeof v === "string" ? v : ""}
+            onChange={(url) => setLeaf(url)}
+          />
+        </div>
+      );
+    case "icon_image":
+      return (
+        <div className="min-w-0 space-y-2">
+          <FieldLabelLine htmlFor={fid} def={def} />
+          <CmsIconImageUploadField
             inputId={fid}
             hideLabel
             value={typeof v === "string" ? v : ""}

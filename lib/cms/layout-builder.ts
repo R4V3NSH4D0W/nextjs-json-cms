@@ -25,6 +25,7 @@ export type SectionBlockType =
   | "textarea"
   | "badge"
   | "image"
+  | "icon_image"
   | "file"
   | "icon"
   | "color"
@@ -133,6 +134,13 @@ export const SECTION_TOOLS: SectionTool[] = [
     group: "content",
   },
   {
+    id: "icon_image",
+    name: "Icon image",
+    description: "Icon image stored in the /icon media folder (PNG, SVG, WebP, ICO)",
+    icon: FiImage,
+    group: "content",
+  },
+  {
     id: "file",
     name: "File",
     description: "Downloadable file (PDF, DOCX, etc.) — upload or link",
@@ -203,6 +211,7 @@ export const TYPE_LABEL: Record<SectionBlockType, string> = {
   textarea: "Text area",
   badge: "Badge",
   image: "Image",
+  icon_image: "Icon image",
   file: "File",
   icon: "Icon",
   color: "Color",
@@ -222,6 +231,7 @@ export const TYPE_SHORT: Record<SectionBlockType, string> = {
   textarea: "txa",
   badge: "bdg",
   image: "img",
+  icon_image: "ico",
   file: "file",
   icon: "icn",
   color: "clr",
@@ -248,6 +258,7 @@ const ROOT_DEFAULT_KEY: Partial<Record<SectionBlockType, string>> = {
   textarea: "textarea",
   badge: "badge",
   image: "image",
+  icon_image: "iconImage",
   file: "file",
   icon: "icon",
   color: "color",
@@ -264,6 +275,7 @@ const NESTED_DEFAULT_KEY: Record<SectionBlockType, string> = {
   textarea: "textarea",
   badge: "badge",
   image: "image",
+  icon_image: "iconImage",
   file: "file",
   icon: "icn",
   color: "color",
