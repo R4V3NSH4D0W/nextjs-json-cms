@@ -80,11 +80,12 @@ export async function syncLayoutSlotsToPage(params: {
     );
   }
 
+  const textIdsSet = new Set(textIds);
   const finalOrder: string[] = [];
   let ti = 0;
   for (const b of sorted) {
     if (b.type === "text_block") {
-      if (b.isActive === false) {
+      if (b.isActive === false && !textIdsSet.has(b.id)) {
         // Preserve removed blocks in-place so reorder can still include every id.
         finalOrder.push(b.id);
         continue;

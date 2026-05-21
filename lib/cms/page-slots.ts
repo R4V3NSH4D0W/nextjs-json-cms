@@ -18,7 +18,14 @@ import {
  */
 export function blocksToLayoutSlots(page: CmsPage): CmsNewPageLayoutSlot[] {
   const textBlocks = [...page.blocks]
-    .filter((b) => b.type === "text_block" && b.isActive !== false)
+    .filter((b) => {
+      if (b.type !== "text_block") return false;
+      const raw =
+        b.config && typeof b.config === "object" && !Array.isArray(b.config)
+          ? (b.config as Record<string, unknown>)
+          : {};
+      return raw.isDeleted !== true;
+    })
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
   if (textBlocks.length === 0) {

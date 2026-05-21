@@ -226,7 +226,7 @@ export default async function DashboardHomePage() {
               asChild
               className="w-full justify-start gap-2 h-10 shadow-sm"
             >
-              <Link href="/dashboard/cms/pages/new">
+              <Link href="/dashboard/cms/new">
                 <Plus className="size-4" /> Create New Page
               </Link>
             </Button>
